@@ -4,7 +4,11 @@
   "description": "Wakeup protocol over protomux",
   "main": "index.js",
   "dependencies": {
-    "bare-events": "^2.5.4"
+    "b4a": "^1.6.7",
+    "bare-events": "^2.5.4",
+    "hypercore-crypto": "^3.5.0",
+    "hyperschema": "^1.10.4",
+    "protomux": "^3.10.1"
   },
   "files": [
     "index.js",
