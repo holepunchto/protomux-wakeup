@@ -242,7 +242,7 @@ class WakeupSession extends EventEmitter {
 
     this.peersByStream.set(peer.stream, peer)
 
-    if (this.handler) this.handler.onadd(peer)
+    if (this.handler) this.handler.onpeeradd(peer)
     this.emit('add', peer)
   }
 
@@ -276,7 +276,7 @@ class WakeupSession extends EventEmitter {
     peer.unlink(this.peers)
     this.peersByStream.delete(peer.stream)
 
-    if (this.handler) this.handler.onremove(peer)
+    if (this.handler) this.handler.onpeerremove(peer)
     this.emit('remove', peer)
   }
 
