@@ -49,16 +49,18 @@ module.exports = class WakeupSwarm {
   }
 
   addStream (stream) {
-    if (!stream.connected) {
-      stream.once('connect', this.addStream.bind(this, stream))
+    const noiseStream = stream.noiseStream || stream
+
+    if (!noiseStream.connected) {
+      noiseStream.once('open', this.addStream.bind(this, noiseStream))
       return
     }
 
-    const muxer = getMuxer(stream)
+    const muxer = getMuxer(noiseStream)
     muxer.pair({ protocol: 'wakeup' }, id => this._onpair(id, muxer))
 
     this.muxers.add(muxer)
-    stream.on('close', () => this.muxers.delete(muxer))
+    noiseStream.on('close', () => this.muxers.delete(muxer))
 
     for (const w of this.sessions.values()) {
       w._onopen(muxer)
