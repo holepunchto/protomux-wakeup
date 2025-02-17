@@ -1,0 +1,35 @@
+{
+  "name": "protomux-wakeup",
+  "version": "0.0.0",
+  "description": "Wakeup protocol over protomux",
+  "main": "index.js",
+  "dependencies": {
+    "bare-events": "^2.5.4"
+  },
+  "files": [
+    "index.js",
+    "spec/hyperschema/*.js"
+  ],
+  "imports": {
+    "events": {
+      "bare": "bare-events",
+      "default": "events"
+    }
+  },
+  "scripts": {
+    "test": "standard"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/holepunchto/protomux-wakeup.git"
+  },
+  "author": "Holepunch Inc.",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/holepunchto/protomux-wakeup/issues"
+  },
+  "homepage": "https://github.com/holepunchto/protomux-wakeup",
+  "devDependencies": {
+    "standard": "^17.1.2"
+  }
+}
