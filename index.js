@@ -131,6 +131,7 @@ class WakeupSession extends EventEmitter {
     super()
 
     this.state = state
+    this.handler = null
     this.id = id
     this.capability = capability
     this.peers = []
@@ -241,6 +242,7 @@ class WakeupSession extends EventEmitter {
 
     this.peersByStream.set(peer.stream, peer)
 
+    if (this.handler) this.handler.onadd(peer)
     this.emit('add', peer)
   }
 
@@ -274,14 +276,17 @@ class WakeupSession extends EventEmitter {
     peer.unlink(this.peers)
     this.peersByStream.delete(peer.stream)
 
+    if (this.handler) this.handler.onremove(peer)
     this.emit('remove', peer)
   }
 
   _onwakeup (wakeup, peer) {
+    if (this.handler) this.handler.onwakeup(peer)
     this.emit('wakeup', wakeup, peer)
   }
 
   _onrequest (req, peer) {
+    if (this.handler) this.handler.onwakeuprequest(peer)
     this.emit('wakeup-request', req, peer)
   }
 
