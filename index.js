@@ -126,6 +126,7 @@ class WakeupPeer {
   }
 }
 
+// TODO: make proper sessions vs the single shared one atm, then we can kill the handlers
 class WakeupSession extends EventEmitter {
   constructor (state, id, capability) {
     super()
@@ -281,12 +282,12 @@ class WakeupSession extends EventEmitter {
   }
 
   _onwakeup (wakeup, peer) {
-    if (this.handler) this.handler.onwakeup(peer)
+    if (this.handler) this.handler.onwakeup(wakeup, peer)
     this.emit('wakeup', wakeup, peer)
   }
 
   _onrequest (req, peer) {
-    if (this.handler) this.handler.onwakeuprequest(peer)
+    if (this.handler) this.handler.onwakeuprequest(req, peer)
     this.emit('wakeup-request', req, peer)
   }
 
