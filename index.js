@@ -15,7 +15,7 @@ const WakeupRequest = schema.getEncoding('@wakeup/wakeup-request')
 const Info = schema.getEncoding('@wakeup/info')
 
 module.exports = class WakeupSwarm {
-  constructor (onwakeup) {
+  constructor (onwakeup = noop) {
     this.sessions = new Map()
     this.sessionsGC = new Set()
     this.muxers = new Set()
@@ -366,3 +366,5 @@ function getMuxer (stream) {
   stream.noiseStream.userData = mux
   return mux
 }
+
+function noop () {}
