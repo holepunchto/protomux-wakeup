@@ -104,7 +104,7 @@ module.exports = class WakeupSwarm {
     if (this._gcInterval) clearInterval(this._gcInterval)
     this._gcInterval = null
 
-    for (const w of this.sessions.values()) w.destroy()
+    for (const w of this.sessions.values()) w.teardown()
   }
 
   async _onpair (id, muxer) {
