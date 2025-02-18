@@ -1,7 +1,6 @@
 const crypto = require('hypercore-crypto')
 const Protomux = require('protomux')
 const b4a = require('b4a')
-const EventEmitter = require('events')
 const schema = require('./spec/hyperschema')
 
 const [
@@ -26,23 +25,24 @@ module.exports = class WakeupSwarm {
     this._gcBound = this._gc.bind(this)
   }
 
-  session (capability, id = crypto.hash(capability)) {
+  session (capability, handlers) {
+    const id = handlers.id || crypto.hash(capability)
+    const active = handlers.active !== false
     const hex = b4a.toString(id, 'hex')
 
     let w = this.sessions.get(hex)
 
     if (w) {
-      w.active()
+      if (active) w.active()
       return w
     }
 
-    w = new WakeupSession(this, id, capability)
-    w.active()
+    w = new WakeupSession(this, id, capability, active, handlers)
 
     this.sessions.set(hex, w)
 
     for (const muxer of this.muxers) {
-      w._onopen(muxer)
+      w._onopen(muxer, true)
     }
 
     return w
@@ -63,7 +63,14 @@ module.exports = class WakeupSwarm {
     noiseStream.on('close', () => this.muxers.delete(muxer))
 
     for (const w of this.sessions.values()) {
-      w._onopen(muxer)
+      if (!w.activity) continue
+      w._onopen(muxer, true)
+    }
+  }
+
+  _onActive (w) {
+    for (const m of this.muxers) {
+      w._onopen(m, false)
     }
   }
 
@@ -126,20 +133,18 @@ class WakeupPeer {
   }
 }
 
-// TODO: make proper sessions vs the single shared one atm, then we can kill the handlers
-class WakeupSession extends EventEmitter {
-  constructor (state, id, capability) {
-    super()
-
+// TODO: make proper sessions vs the single shared one atm
+class WakeupSession {
+  constructor (state, id, capability, active, handlers) {
     this.state = state
-    this.handler = null
+    this.handlers = handlers
     this.id = id
     this.capability = capability
     this.peers = []
     this.pendingPeers = []
     this.peersByStream = new Map()
     this.activePeers = 0
-    this.activity = 0
+    this.activity = active ? 1 : 0
     this.idleTicks = 0
     this.gcing = false
     this.destroyed = false
@@ -149,23 +154,30 @@ class WakeupSession extends EventEmitter {
     this.activity++
     this.idleTicks = 0
     if (this.activity !== 1) return
-
-    const info = { active: true }
-    for (const peer of this.pendingPeers) peer.wireInfo.send(info)
-    for (const peer of this.peers) peer.wireInfo.send(info)
-    this._checkGC()
+    this._updateActive(true)
   }
 
   inactive () {
     if (this.activity === 0) return
     this.activity--
     if (this.activity !== 0) return
+    this._updateActive(false)
+  }
 
-    const info = { active: false }
+  release () {
+    this.handlers = null
+    this.inactive()
+  }
+
+  _updateActive (active) {
+    const info = { active }
 
     for (const peer of this.pendingPeers) peer.wireInfo.send(info)
     for (const peer of this.peers) peer.wireInfo.send(info)
+
     this._checkGC()
+
+    if (active) this.state._onActive(this)
   }
 
   requestByStream (stream, req) {
@@ -241,10 +253,7 @@ class WakeupSession extends EventEmitter {
       this._checkGC()
     }
 
-    this.peersByStream.set(peer.stream, peer)
-
-    if (this.handler) this.handler.onpeeradd(peer)
-    this.emit('add', peer)
+    if (this.handlers && this.handlers.onpeeradd) this.handlers.onpeeradd(peer, this)
   }
 
   _checkGC () {
@@ -264,6 +273,8 @@ class WakeupSession extends EventEmitter {
   }
 
   _removePeer (peer) {
+    this.peersByStream.delete(peer.stream)
+
     if (peer.pending) {
       peer.unlink(this.pendingPeers)
       return
@@ -275,20 +286,16 @@ class WakeupSession extends EventEmitter {
     }
 
     peer.unlink(this.peers)
-    this.peersByStream.delete(peer.stream)
 
-    if (this.handler) this.handler.onpeerremove(peer)
-    this.emit('remove', peer)
+    if (this.handlers && this.handlers.onpeerremove) this.handlers.onpeerremove(peer, this)
   }
 
   _onwakeup (wakeup, peer) {
-    if (this.handler) this.handler.onwakeup(wakeup, peer)
-    this.emit('wakeup', wakeup, peer)
+    if (this.handlers && this.handlers.onwakeup) this.handlers.onwakeup(wakeup, peer, this)
   }
 
   _onrequest (req, peer) {
-    if (this.handler) this.handler.onwakeuprequest(req, peer)
-    this.emit('wakeup-request', req, peer)
+    if (this.handlers && this.handlers.onwakeuprequest) this.handlers.onwakeuprequest(req, peer, this)
   }
 
   _oninfo (info, peer) {
@@ -307,7 +314,9 @@ class WakeupSession extends EventEmitter {
     }
   }
 
-  _onopen (muxer) {
+  _onopen (muxer, unique) {
+    if (!unique && this.peersByStream.has(muxer.stream)) return
+
     const peer = new WakeupPeer(this)
     const ch = muxer.createChannel({
       userData: peer,
@@ -333,6 +342,7 @@ class WakeupSession extends EventEmitter {
     peer.wireInfo = ch.messages[2]
 
     peer.index = this.pendingPeers.push(peer) - 1
+    this.peersByStream.set(muxer.stream, peer)
 
     ch.open({
       version: 0,

@@ -14,29 +14,28 @@ await a.join(Buffer.alloc(32, 'yo')).flushed()
 await b.join(Buffer.alloc(32, 'yo')).flushed()
 
 const sw2 = new Wakeup((id) => {
-  const s = sw2.session(Buffer.alloc(32, 'cap'))
-
-  s.on('inactive', function (peer) {
-    console.log('inactive...')
+  const s = sw2.session(Buffer.alloc(32, 'cap'), {
+    active: false,
+    onwakeuprequest (req, peer) {
+      console.log('got wakeup request', req)
+      s.wakeup(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
+    }
   })
-
-  s.on('wakeup-request', function (req, peer) {
-    console.log('got wakeup request', req)
-    s.wakeup(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
-  })
-  // s.inactive()
 })
 
 const sw = new Wakeup()
-const s = sw.session(Buffer.alloc(32, 'cap'))
-
-s.on('wakeup', function (wakeup, peer) {
-  console.log('got wakeup', wakeup)
-})
-
-s.on('add', function (peer) {
-  console.log('got peer...')
-  s.request(peer)
+const s = sw.session(Buffer.alloc(32, 'cap'), {
+  onwakeup (wakeup, peer) {
+    console.log('got wakeup', wakeup)
+  },
+  onpeeradd (peer) {
+    console.log('got peer...')
+    s.request(peer)
+  }
 })
 
 s.inactive()
+
+setTimeout(function () {
+  s.active()
+}, 3000)
