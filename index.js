@@ -26,7 +26,7 @@ module.exports = class WakeupSwarm {
   }
 
   session (capability, handlers) {
-    const id = handlers.id || crypto.hash(capability)
+    const id = handlers.discoveryKey || crypto.hash(capability)
     const active = handlers.active !== false
     const hex = b4a.toString(id, 'hex')
 
