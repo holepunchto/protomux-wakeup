@@ -76,10 +76,10 @@ const encoding2 = {
   }
 }
 
-// @wakeup/wakeup
+// @wakeup/announce
 const encoding3 = c.array(encoding2)
 
-// @wakeup/wakeup-request
+// @wakeup/lookup
 const encoding4 = {
   preencode (state, m) {
     state.end++ // max flag is 1 so always one byte
@@ -127,8 +127,8 @@ function getEncoding (name) {
     case '@wakeup/info': return encoding0
     case '@wakeup/handshake': return encoding1
     case '@wakeup/writer': return encoding2
-    case '@wakeup/wakeup': return encoding3
-    case '@wakeup/wakeup-request': return encoding4
+    case '@wakeup/announce': return encoding3
+    case '@wakeup/lookup': return encoding4
     default: throw new Error('Encoder not found ' + name)
   }
 }

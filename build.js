@@ -56,13 +56,13 @@ wakeupSchema.register({
 })
 
 wakeupSchema.register({
-  name: 'wakeup',
+  name: 'announce',
   type: '@wakeup/writer',
   array: true
 })
 
 wakeupSchema.register({
-  name: 'wakeup-request',
+  name: 'lookup',
   fields: [
     {
       name: 'hash',

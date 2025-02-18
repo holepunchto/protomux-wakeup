@@ -9,8 +9,8 @@ const [
 ] = crypto.namespace('wakeup', 2)
 
 const Handshake = schema.getEncoding('@wakeup/handshake')
-const Wakeup = schema.getEncoding('@wakeup/wakeup')
-const WakeupRequest = schema.getEncoding('@wakeup/wakeup-request')
+const Announce = schema.getEncoding('@wakeup/announce')
+const Lookup = schema.getEncoding('@wakeup/lookup')
 const Info = schema.getEncoding('@wakeup/info')
 
 module.exports = class WakeupSwarm {
@@ -117,11 +117,13 @@ module.exports = class WakeupSwarm {
 class WakeupPeer {
   constructor (session) {
     this.index = 0
+    this.userData = null // for the user
+    this.clock = 0 // for the user, v useful to reduce traffic
     this.pending = true
     this.session = session
     this.channel = null
-    this.wireRequest = null
-    this.wireWakeup = null
+    this.wireLookup = null
+    this.wireAnnounce = null
     this.wireInfo = null
   }
 
@@ -180,31 +182,31 @@ class WakeupSession {
     if (active) this.state._onActive(this)
   }
 
-  requestByStream (stream, req) {
-    const peer = this.peersByStream.get(stream)
-    if (peer) this.request(peer, req)
-  }
-
-  request (peer, req) {
-    peer.wireRequest.send(req || { hash: null })
-  }
-
-  broadcastRequest (req) {
+  broadcastLookup (req) {
     for (const peer of this.pendingPeers) {
-      this.request(peer, req)
+      this.lookup(peer, req)
     }
     for (const peer of this.peers) {
-      this.request(peer, req)
+      this.lookup(peer, req)
     }
   }
 
-  wakeupByStream (stream, wakeup) {
+  lookupByStream (stream, req) {
     const peer = this.peersByStream.get(stream)
-    if (peer) this.wakeup(peer, wakeup)
+    if (peer) this.lookup(peer, req)
   }
 
-  wakeup (peer, wakeup) {
-    peer.wireWakeup.send(wakeup)
+  lookup (peer, req) {
+    peer.wireLookup.send(req || { hash: null })
+  }
+
+  announceByStream (stream, wakeup) {
+    const peer = this.peersByStream.get(stream)
+    if (peer && !peer.pending) this.announce(peer, wakeup)
+  }
+
+  announce (peer, wakeup) {
+    peer.wireAnnounce.send(wakeup)
   }
 
   destroy () {
@@ -290,12 +292,12 @@ class WakeupSession {
     if (this.handlers && this.handlers.onpeerremove) this.handlers.onpeerremove(peer, this)
   }
 
-  _onwakeup (wakeup, peer) {
-    if (this.handlers && this.handlers.onwakeup) this.handlers.onwakeup(wakeup, peer, this)
+  _onannounce (wakeup, peer) {
+    if (this.handlers && this.handlers.onannounce) this.handlers.onannounce(wakeup, peer, this)
   }
 
-  _onrequest (req, peer) {
-    if (this.handlers && this.handlers.onwakeuprequest) this.handlers.onwakeuprequest(req, peer, this)
+  _onlookup (req, peer) {
+    if (this.handlers && this.handlers.onlookup) this.handlers.onlookup(req, peer, this)
   }
 
   _oninfo (info, peer) {
@@ -324,8 +326,8 @@ class WakeupSession {
       id: this.id,
       handshake: Handshake,
       messages: [
-        { encoding: WakeupRequest, onmessage: onchannelrequest },
-        { encoding: Wakeup, onmessage: onchannelwakeup },
+        { encoding: Lookup, onmessage: onlookup },
+        { encoding: Announce, onmessage: onannounce },
         { encoding: Info, onmessage: onchannelinfo }
       ],
       onopen: onchannelopen,
@@ -337,8 +339,8 @@ class WakeupSession {
     peer.channel = ch
     peer.stream = muxer.stream
 
-    peer.wireRequest = ch.messages[0]
-    peer.wireWakeup = ch.messages[1]
+    peer.wireLookup = ch.messages[0]
+    peer.wireAnnounce = ch.messages[1]
     peer.wireInfo = ch.messages[2]
 
     peer.index = this.pendingPeers.push(peer) - 1
@@ -362,14 +364,14 @@ function onchannelclose (close, channel) {
   peer.session._removePeer(peer)
 }
 
-function onchannelrequest (req, channel) {
+function onlookup (req, channel) {
   const peer = channel.userData
-  peer.session._onrequest(req, peer)
+  peer.session._onlookup(req, peer)
 }
 
-function onchannelwakeup (wakeup, channel) {
+function onannounce (wakeup, channel) {
   const peer = channel.userData
-  peer.session._onwakeup(wakeup, peer)
+  peer.session._onannounce(wakeup, peer)
 }
 
 function onchannelinfo (info, channel) {

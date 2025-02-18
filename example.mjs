@@ -16,21 +16,21 @@ await b.join(Buffer.alloc(32, 'yo')).flushed()
 const sw2 = new Wakeup((id) => {
   const s = sw2.session(Buffer.alloc(32, 'cap'), {
     active: false,
-    onwakeuprequest (req, peer) {
+    onlookup (req, peer) {
       console.log('got wakeup request', req)
-      s.wakeup(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
+      s.announce(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
     }
   })
 })
 
 const sw = new Wakeup()
 const s = sw.session(Buffer.alloc(32, 'cap'), {
-  onwakeup (wakeup, peer) {
-    console.log('got wakeup', wakeup)
+  onannounce (wakeup, peer) {
+    console.log('got announce', wakeup)
   },
   onpeeradd (peer) {
     console.log('got peer...')
-    s.request(peer)
+    s.lookup(peer)
   }
 })
 

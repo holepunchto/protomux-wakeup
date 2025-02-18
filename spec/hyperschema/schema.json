@@ -60,13 +60,13 @@
       ]
     },
     {
-      "name": "wakeup",
+      "name": "announce",
       "namespace": "wakeup",
       "array": true,
       "type": "@wakeup/writer"
     },
     {
-      "name": "wakeup-request",
+      "name": "lookup",
       "namespace": "wakeup",
       "compact": false,
       "flagsPosition": 0,
