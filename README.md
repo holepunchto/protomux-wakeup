@@ -15,34 +15,40 @@ const w = new Wakeup()
 
 w.addStream(stream)
 
-const s = w.session(capability)
+const s = w.session(capability, {
+  onpeeradd (peer) {
+    // peer added
+  },
+  onpeerremove (peer) {
+    // peer removed
+  },
+  onlookup (req, peer) {
+    // received a lookup request
+  },
+  onannounce (wakeup, peer) {
+    // received an announce message
+  }
+})
 
 // the peers
 s.peers
 
-// peer added
-s.on('add', peer => ...)
-// peer removed
-s.on('remove', peer => ...)
-
 // request wakeup
-s.request(peer, { hash })
-s.wakeup(peer, [{ key, length }])
+s.lookup(peer, { hash })
+s.announce(peer, [{ key, length }])
 
 // or by stream
-s.requestByStream(stream, ...)
-s.wakeupByStream(stream, ...)
-
-// received a wakeup
-s.on('wakeup', (wakeup, peer) => ...)
-// received a wakeup request
-s.on('request', (request, peer) => ...)
+s.lookupByStream(stream, ...)
+s.announceByStream(stream, ...)
 
 // mark session as inactive, you must call this when done
 s.inactive()
 
 // cancel an inactive call
 s.active()
+
+// release the handlers
+s.release()
 ```
 
 ## License

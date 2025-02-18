@@ -33,6 +33,7 @@ module.exports = class WakeupSwarm {
     let w = this.sessions.get(hex)
 
     if (w) {
+      w.handlers = handlers
       if (active) w.active()
       return w
     }
@@ -63,7 +64,7 @@ module.exports = class WakeupSwarm {
     noiseStream.on('close', () => this.muxers.delete(muxer))
 
     for (const w of this.sessions.values()) {
-      if (!w.activity) continue
+      if (!w.isActive) continue
       w._onopen(muxer, true)
     }
   }
@@ -96,7 +97,7 @@ module.exports = class WakeupSwarm {
       w.idleTicks++
       if (w.idleTicks >= 5) destroy.push(w)
     }
-    for (const w of destroy) w.destroy()
+    for (const w of destroy) w.teardown()
   }
 
   destroy () {
@@ -146,29 +147,29 @@ class WakeupSession {
     this.pendingPeers = []
     this.peersByStream = new Map()
     this.activePeers = 0
-    this.activity = active ? 1 : 0
+    this.isActive = active
     this.idleTicks = 0
     this.gcing = false
     this.destroyed = false
   }
 
   active () {
-    this.activity++
+    if (this.isActive) return
     this.idleTicks = 0
-    if (this.activity !== 1) return
+    this.isActive = true
     this._updateActive(true)
   }
 
   inactive () {
-    if (this.activity === 0) return
-    this.activity--
-    if (this.activity !== 0) return
+    if (!this.isActive) return
+    this.isActive = false
     this._updateActive(false)
   }
 
-  release () {
-    this.handlers = null
+  destroy (force) {
     this.inactive()
+    this.handlers = null
+    if (force) this.teardown()
   }
 
   _updateActive (active) {
@@ -209,9 +210,10 @@ class WakeupSession {
     peer.wireAnnounce.send(wakeup)
   }
 
-  destroy () {
+  teardown () {
     if (this.destroyed) return
     this.destroyed = true
+    this.handlers = null
 
     for (let i = this.peers.length - 1; i >= 0; i--) {
       this.peers[i].channel.close()
@@ -259,7 +261,7 @@ class WakeupSession {
   }
 
   _checkGC () {
-    const shouldGC = this.activity === 0 && this.activePeers === 0
+    const shouldGC = this.isActive === false && this.activePeers === 0
 
     if (shouldGC) {
       if (!this.gcing) {
@@ -349,7 +351,7 @@ class WakeupSession {
     ch.open({
       version: 0,
       capability: this._proveCapabilityTo(muxer.stream),
-      active: this.activity > 0
+      active: this.isActive
     })
   }
 }
