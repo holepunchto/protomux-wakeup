@@ -107,11 +107,11 @@ module.exports = class WakeupSwarm {
     for (const w of this.sessions.values()) w.teardown()
   }
 
-  async _onpair (id, muxer) {
+  async _onpair (id, stream) {
     const hex = b4a.toString(id, 'hex')
     const w = this.sessions.get(hex)
-    if (!w) return this.onwakeup(id, muxer)
-    w._onopen(muxer)
+    if (!w) return this.onwakeup(id, stream)
+    w._onopen(getMuxer(stream), false)
   }
 }
 
@@ -228,6 +228,10 @@ class WakeupSession {
     this.gcing = false
     this.state.sessions.delete(hex)
     this.state._removeGC(this)
+  }
+
+  addStream (stream) {
+    this._onopen(getMuxer(stream), false)
   }
 
   _proveCapabilityTo (stream) {
