@@ -49,6 +49,10 @@ module.exports = class WakeupSwarm {
     return w
   }
 
+  getSession (id) {
+    return this.sessions.get(b4a.toString(id, 'hex')) || null
+  }
+
   addStream (stream) {
     const noiseStream = stream.noiseStream || stream
 
@@ -121,6 +125,7 @@ class WakeupPeer {
     this.userData = null // for the user
     this.clock = 0 // for the user, v useful to reduce traffic
     this.pending = true
+    this.removed = false
     this.session = session
     this.channel = null
     this.wireLookup = null
@@ -136,7 +141,6 @@ class WakeupPeer {
   }
 }
 
-// TODO: make proper sessions vs the single shared one atm
 class WakeupSession {
   constructor (state, id, capability, active, handlers) {
     this.state = state
@@ -181,6 +185,10 @@ class WakeupSession {
     this._checkGC()
 
     if (active) this.state._onActive(this)
+  }
+
+  getPeer (stream) {
+    return this.peersByStream.get(stream) || null
   }
 
   broadcastLookup (req) {
@@ -281,6 +289,7 @@ class WakeupSession {
   }
 
   _removePeer (peer) {
+    peer.removed = true
     this.peersByStream.delete(peer.stream)
 
     if (peer.pending) {
