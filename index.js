@@ -228,7 +228,7 @@ class WakeupSession {
     }
 
     for (let i = this.pendingPeers.length - 1; i >= 0; i--) {
-      this.peers[i].channel.close()
+      this.pendingPeers[i].channel.close()
     }
 
     const hex = b4a.toString(this.id, 'hex')
