@@ -128,6 +128,7 @@ class WakeupPeer {
     this.removed = false
     this.session = session
     this.channel = null
+    this.stream = null
     this.wireLookup = null
     this.wireAnnounce = null
     this.wireInfo = null
