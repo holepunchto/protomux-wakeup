@@ -270,7 +270,10 @@ class WakeupSession {
       this._checkGC()
     }
 
-    if (this.handlers && this.handlers.onpeeradd) this.handlers.onpeeradd(peer, this)
+    if (!this.handlers) return
+
+    if (this.handlers.onpeeradd) this.handlers.onpeeradd(peer, this)
+    if (peer.active && this.handlers.onpeeractive) this.handlers.onpeeractive(peer, this)
   }
 
   _checkGC () {
@@ -298,14 +301,20 @@ class WakeupSession {
       return
     }
 
-    if (peer.active) {
+    const active = peer.active
+
+    if (active) {
+      peer.active = false
       this.activePeers--
       this._checkGC()
     }
 
     peer.unlink(this.peers)
 
-    if (this.handlers && this.handlers.onpeerremove) this.handlers.onpeerremove(peer, this)
+    if (!this.handlers) return
+
+    if (active && this.handlers.onpeerinactive) this.handlers.onpeerinactive(peer, this)
+    if (this.handlers.onpeerremove) this.handlers.onpeerremove(peer, this)
   }
 
   _onannounce (wakeup, peer) {
@@ -322,12 +331,14 @@ class WakeupSession {
         peer.active = true
         this.activePeers++
         this._checkGC()
+        if (this.handlers && this.handlers.onpeeractive) this.handlers.onpeeractive(peer, this)
       }
     } else {
       if (peer.active) {
         peer.active = false
         this.activePeers--
         this._checkGC()
+        if (this.handlers && this.handlers.onpeerinactive) this.handlers.onpeerinactive(peer, this)
       }
     }
   }
