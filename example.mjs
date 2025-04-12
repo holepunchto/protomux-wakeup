@@ -19,6 +19,12 @@ const sw2 = new Wakeup((id) => {
     onlookup (req, peer) {
       console.log('got wakeup request', req)
       s.announce(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
+    },
+    onpeeradd () {
+      console.log('remote got peer')
+    },
+    onpeeractive () {
+      console.log('remote got active peer')
     }
   })
 })
