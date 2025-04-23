@@ -15,8 +15,8 @@ const Info = schema.getEncoding('@wakeup/info')
 
 module.exports = class WakeupSwarm {
   constructor (onwakeup = noop) {
-    this.sessions = new Map()
-    this.sessionsGC = new Set()
+    this.topics = new Map()
+    this.topicsGC = new Set()
     this.muxers = new Set()
 
     this.onwakeup = onwakeup
@@ -30,13 +30,13 @@ module.exports = class WakeupSwarm {
     const active = handlers.active !== false
     const hex = b4a.toString(id, 'hex')
 
-    let w = this.sessions.get(hex)
+    let w = this.topics.get(hex)
 
     if (w) return w.addSession(handlers)
 
     w = new WakeupTopic(this, id, capability, active)
 
-    this.sessions.set(hex, w)
+    this.topics.set(hex, w)
 
     for (const muxer of this.muxers) {
       w._onopen(muxer, true)
@@ -59,7 +59,7 @@ module.exports = class WakeupSwarm {
     this.muxers.add(muxer)
     noiseStream.on('close', () => this.muxers.delete(muxer))
 
-    for (const w of this.sessions.values()) {
+    for (const w of this.topics.values()) {
       if (!w.isActive) continue
       w._onopen(muxer, true)
     }
@@ -73,15 +73,15 @@ module.exports = class WakeupSwarm {
 
   _addGC (session) {
     if (session.destroyed) return
-    this.sessionsGC.add(session)
+    this.topicsGC.add(session)
     if (this._gcInterval === null) {
       this._gcInterval = setInterval(this._gcBound, 2000)
     }
   }
 
   _removeGC (session) {
-    this.sessionsGC.delete(session)
-    if (this.sessionsGC.size === 0 && this._gcInterval) {
+    this.topicsGC.delete(session)
+    if (this.topicsGC.size === 0 && this._gcInterval) {
       clearInterval(this._gcInterval)
       this._gcInterval = null
     }
@@ -89,7 +89,7 @@ module.exports = class WakeupSwarm {
 
   _gc () {
     const destroy = []
-    for (const w of this.sessionsGC) {
+    for (const w of this.topicsGC) {
       w.idleTicks++
       if (w.idleTicks >= 5) destroy.push(w)
     }
@@ -100,12 +100,12 @@ module.exports = class WakeupSwarm {
     if (this._gcInterval) clearInterval(this._gcInterval)
     this._gcInterval = null
 
-    for (const w of this.sessions.values()) w.teardown()
+    for (const w of this.topics.values()) w.teardown()
   }
 
   async _onpair (id, stream) {
     const hex = b4a.toString(id, 'hex')
-    const w = this.sessions.get(hex)
+    const w = this.topics.get(hex)
     if (!w) return this.onwakeup(id, stream)
     w._onopen(getMuxer(stream), false)
   }
@@ -319,7 +319,7 @@ class WakeupTopic {
   }
 
   _checkGC () {
-    const shouldGC = this.isActive === false && this.activePeers === 0
+    const shouldGC = this.isActive === false && this.activePeers === 0 && this.sessions.length === 0
 
     if (shouldGC) {
       if (!this.gcing) {

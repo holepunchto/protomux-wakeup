@@ -30,12 +30,23 @@ const sw2 = new Wakeup((id) => {
 })
 
 const sw = new Wakeup()
-const s = sw.session(Buffer.alloc(32, 'cap'), {
+
+sw.session(Buffer.alloc(32, 'cap'), {
+  active: false,
   onannounce (wakeup, peer) {
-    console.log('got announce', wakeup)
+    console.log('[s2] got announce', wakeup)
   },
   onpeeradd (peer) {
-    console.log('got peer...')
+    console.log('[s2] got peer...')
+  }
+})
+
+const s = sw.session(Buffer.alloc(32, 'cap'), {
+  onannounce (wakeup, peer) {
+    console.log('[s] got announce', wakeup)
+  },
+  onpeeradd (peer) {
+    console.log('[s] got peer...')
     s.lookup(peer)
   }
 })
