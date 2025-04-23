@@ -222,6 +222,7 @@ class WakeupTopic {
     }
 
     this._bumpActivity()
+    this._checkGC()
   }
 
   _bumpActivity () {
@@ -322,7 +323,7 @@ class WakeupTopic {
   }
 
   _checkGC () {
-    const shouldGC = this.isActive === false && this.activePeers === 0 && this.sessions.length === 0
+    const shouldGC = this.activePeers === 0 && this.sessions.length === 0
 
     if (shouldGC) {
       if (!this.gcing) {
