@@ -71,16 +71,16 @@ module.exports = class WakeupSwarm {
     }
   }
 
-  _addGC (session) {
-    if (session.destroyed) return
-    this.topicsGC.add(session)
+  _addGC (topic) {
+    if (topic.destroyed) return
+    this.topicsGC.add(topic)
     if (this._gcInterval === null) {
       this._gcInterval = setInterval(this._gcBound, 2000)
     }
   }
 
-  _removeGC (session) {
-    this.topicsGC.delete(session)
+  _removeGC (topic) {
+    this.topicsGC.delete(topic)
     if (this.topicsGC.size === 0 && this._gcInterval) {
       clearInterval(this._gcInterval)
       this._gcInterval = null
@@ -112,13 +112,13 @@ module.exports = class WakeupSwarm {
 }
 
 class WakeupPeer {
-  constructor (session) {
+  constructor (topic) {
     this.index = 0
     this.userData = null // for the user
     this.clock = 0 // for the user, v useful to reduce traffic
     this.pending = true
     this.removed = false
-    this.session = session
+    this.topic = topic
     this.channel = null
     this.stream = null
     this.wireLookup = null
@@ -135,28 +135,28 @@ class WakeupPeer {
 }
 
 class WakeupSession {
-  constructor (parent, handlers) {
-    this.parent = parent
+  constructor (topic, handlers) {
     this.index = 0
+    this.topic = topic
     this.handlers = handlers
     this.isActive = handlers.active !== false
   }
 
   getPeer (stream) {
-    return this.parent.peersByStream.get(stream) || null
+    return this.topic.peersByStream.get(stream) || null
   }
 
   broadcastLookup (req) {
-    for (const peer of this.parent.pendingPeers) {
+    for (const peer of this.topic.pendingPeers) {
       this.lookup(peer, req)
     }
-    for (const peer of this.parent.peers) {
+    for (const peer of this.topic.peers) {
       this.lookup(peer, req)
     }
   }
 
   lookupByStream (stream, req) {
-    const peer = this.parent.peersByStream.get(stream)
+    const peer = this.topic.peersByStream.get(stream)
     if (peer) this.lookup(peer, req)
   }
 
@@ -165,7 +165,7 @@ class WakeupSession {
   }
 
   announceByStream (stream, wakeup) {
-    const peer = this.parent.peersByStream.get(stream)
+    const peer = this.topic.peersByStream.get(stream)
     if (peer && !peer.pending) this.announce(peer, wakeup)
   }
 
@@ -175,16 +175,16 @@ class WakeupSession {
 
   active () {
     this.isActive = true
-    this.parent._bumpActivity()
+    this.topic._bumpActivity()
   }
 
   inactive () {
     this.isActive = false
-    this.parent._bumpActivity()
+    this.topic._bumpActivity()
   }
 
   destroy () {
-    this.parent.removeSession(this)
+    this.topic.removeSession(this)
   }
 }
 
@@ -227,8 +227,11 @@ class WakeupTopic {
   _bumpActivity () {
     let isActive = false
 
-    for (let i = 0; i < this.sessions.length; i++) {
-      if (this.sessions[i].isActive) isActive = true
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
+      if (this.sessions[i].isActive) {
+        isActive = true
+        break
+      }
     }
 
     if (isActive) this.active()
@@ -309,7 +312,7 @@ class WakeupTopic {
       this._checkGC()
     }
 
-    for (let i = 0; i < this.sessions.length; i++) {
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
 
@@ -353,7 +356,7 @@ class WakeupTopic {
 
     peer.unlink(this.peers)
 
-    for (let i = 0; i < this.sessions.length; i++) {
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
 
@@ -363,7 +366,7 @@ class WakeupTopic {
   }
 
   _onannounce (wakeup, peer) {
-    for (let i = 0; i < this.sessions.length; i++) {
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
 
@@ -372,7 +375,7 @@ class WakeupTopic {
   }
 
   _onlookup (req, peer) {
-    for (let i = 0; i < this.sessions.length; i++) {
+    for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
 
@@ -387,7 +390,7 @@ class WakeupTopic {
         this.activePeers++
         this._checkGC()
 
-        for (let i = 0; i < this.sessions.length; i++) {
+        for (let i = this.sessions.length - 1; i >= 0; i--) {
           const session = this.sessions[i]
           const handlers = session.handlers
 
@@ -400,7 +403,7 @@ class WakeupTopic {
         this.activePeers--
         this._checkGC()
 
-        for (let i = 0; i < this.sessions.length; i++) {
+        for (let i = this.sessions.length - 1; i >= 0; i--) {
           const session = this.sessions[i]
           const handlers = session.handlers
 
@@ -450,27 +453,27 @@ class WakeupTopic {
 
 function onchannelopen (open, channel) {
   const peer = channel.userData
-  peer.session._addPeer(peer, open)
+  peer.topic._addPeer(peer, open)
 }
 
 function onchannelclose (close, channel) {
   const peer = channel.userData
-  peer.session._removePeer(peer)
+  peer.topic._removePeer(peer)
 }
 
 function onlookup (req, channel) {
   const peer = channel.userData
-  peer.session._onlookup(req, peer)
+  peer.topic._onlookup(req, peer)
 }
 
 function onannounce (wakeup, channel) {
   const peer = channel.userData
-  peer.session._onannounce(wakeup, peer)
+  peer.topic._onannounce(wakeup, peer)
 }
 
 function onchannelinfo (info, channel) {
   const peer = channel.userData
-  peer.session._oninfo(info, peer)
+  peer.topic._oninfo(info, peer)
 }
 
 function getMuxer (stream) {
