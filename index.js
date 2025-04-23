@@ -25,20 +25,16 @@ module.exports = class WakeupSwarm {
     this._gcBound = this._gc.bind(this)
   }
 
-  session (capability, handlers) {
+  session (capability, handlers = {}) {
     const id = handlers.discoveryKey || crypto.discoveryKey(capability)
     const active = handlers.active !== false
     const hex = b4a.toString(id, 'hex')
 
     let w = this.sessions.get(hex)
 
-    if (w) {
-      w.handlers = handlers
-      if (active) w.active()
-      return w
-    }
+    if (w) return w.addSession(handlers)
 
-    w = new WakeupSession(this, id, capability, active, handlers)
+    w = new WakeupTopic(this, id, capability, active)
 
     this.sessions.set(hex, w)
 
@@ -46,11 +42,7 @@ module.exports = class WakeupSwarm {
       w._onopen(muxer, true)
     }
 
-    return w
-  }
-
-  getSession (id) {
-    return this.sessions.get(b4a.toString(id, 'hex')) || null
+    return w.addSession(handlers)
   }
 
   addStream (stream) {
@@ -143,9 +135,63 @@ class WakeupPeer {
 }
 
 class WakeupSession {
-  constructor (state, id, capability, active, handlers) {
-    this.state = state
+  constructor (parent, handlers) {
+    this.parent = parent
+    this.index = 0
     this.handlers = handlers
+    this.isActive = handlers.active !== false
+  }
+
+  getPeer (stream) {
+    return this.parent.peersByStream.get(stream) || null
+  }
+
+  broadcastLookup (req) {
+    for (const peer of this.parent.pendingPeers) {
+      this.lookup(peer, req)
+    }
+    for (const peer of this.parent.peers) {
+      this.lookup(peer, req)
+    }
+  }
+
+  lookupByStream (stream, req) {
+    const peer = this.parent.peersByStream.get(stream)
+    if (peer) this.lookup(peer, req)
+  }
+
+  lookup (peer, req) {
+    peer.wireLookup.send(req || { hash: null })
+  }
+
+  announceByStream (stream, wakeup) {
+    const peer = this.parent.peersByStream.get(stream)
+    if (peer && !peer.pending) this.announce(peer, wakeup)
+  }
+
+  announce (peer, wakeup) {
+    peer.wireAnnounce.send(wakeup)
+  }
+
+  active () {
+    this.isActive = true
+    this.parent._bumpActivity()
+  }
+
+  inactive () {
+    this.isActive = false
+    this.parent._bumpActivity()
+  }
+
+  destroy () {
+    this.parent.removeSession(this)
+  }
+}
+
+class WakeupTopic {
+  constructor (state, id, capability, active) {
+    this.state = state
+    this.sessions = []
     this.id = id
     this.capability = capability
     this.peers = []
@@ -156,6 +202,37 @@ class WakeupSession {
     this.idleTicks = 0
     this.gcing = false
     this.destroyed = false
+  }
+
+  addSession (handlers) {
+    const session = new WakeupSession(this, handlers)
+    session.index = this.sessions.length
+    this.sessions.push(session)
+    return session
+  }
+
+  removeSession (session) {
+    if (this.sessions.length >= session.index) return
+    if (this.sessions[session.index] !== session) return
+
+    const head = this.sessions.pop()
+    if (head !== session) {
+      head.index = session.index
+      this.sessions[head.index] = head
+    }
+
+    this._bumpActivity()
+  }
+
+  _bumpActivity () {
+    let isActive = false
+
+    for (let i = 0; i < this.sessions.length; i++) {
+      if (this.sessions[i].isActive) isActive = true
+    }
+
+    if (isActive) this.active()
+    else this.inactive()
   }
 
   active () {
@@ -171,12 +248,6 @@ class WakeupSession {
     this._updateActive(false)
   }
 
-  destroy (force) {
-    this.inactive()
-    this.handlers = null
-    if (force) this.teardown()
-  }
-
   _updateActive (active) {
     const info = { active }
 
@@ -188,41 +259,9 @@ class WakeupSession {
     if (active) this.state._onActive(this)
   }
 
-  getPeer (stream) {
-    return this.peersByStream.get(stream) || null
-  }
-
-  broadcastLookup (req) {
-    for (const peer of this.pendingPeers) {
-      this.lookup(peer, req)
-    }
-    for (const peer of this.peers) {
-      this.lookup(peer, req)
-    }
-  }
-
-  lookupByStream (stream, req) {
-    const peer = this.peersByStream.get(stream)
-    if (peer) this.lookup(peer, req)
-  }
-
-  lookup (peer, req) {
-    peer.wireLookup.send(req || { hash: null })
-  }
-
-  announceByStream (stream, wakeup) {
-    const peer = this.peersByStream.get(stream)
-    if (peer && !peer.pending) this.announce(peer, wakeup)
-  }
-
-  announce (peer, wakeup) {
-    peer.wireAnnounce.send(wakeup)
-  }
-
   teardown () {
     if (this.destroyed) return
     this.destroyed = true
-    this.handlers = null
 
     for (let i = this.peers.length - 1; i >= 0; i--) {
       this.peers[i].channel.close()
@@ -270,10 +309,13 @@ class WakeupSession {
       this._checkGC()
     }
 
-    if (!this.handlers) return
+    for (let i = 0; i < this.sessions.length; i++) {
+      const session = this.sessions[i]
+      const handlers = session.handlers
 
-    if (this.handlers.onpeeradd) this.handlers.onpeeradd(peer, this)
-    if (peer.active && this.handlers.onpeeractive) this.handlers.onpeeractive(peer, this)
+      if (handlers.onpeeradd) handlers.onpeeradd(peer, session)
+      if (peer.active && handlers.onpeeractive) handlers.onpeeractive(peer, session)
+    }
   }
 
   _checkGC () {
@@ -311,18 +353,31 @@ class WakeupSession {
 
     peer.unlink(this.peers)
 
-    if (!this.handlers) return
+    for (let i = 0; i < this.sessions.length; i++) {
+      const session = this.sessions[i]
+      const handlers = session.handlers
 
-    if (active && this.handlers.onpeerinactive) this.handlers.onpeerinactive(peer, this)
-    if (this.handlers.onpeerremove) this.handlers.onpeerremove(peer, this)
+      if (active && handlers.onpeerinactive) handlers.onpeerinactive(peer, session)
+      if (handlers.onpeerremove) handlers.onpeerremove(peer, session)
+    }
   }
 
   _onannounce (wakeup, peer) {
-    if (this.handlers && this.handlers.onannounce) this.handlers.onannounce(wakeup, peer, this)
+    for (let i = 0; i < this.sessions.length; i++) {
+      const session = this.sessions[i]
+      const handlers = session.handlers
+
+      if (handlers.onannounce) handlers.onannounce(wakeup, peer, session)
+    }
   }
 
   _onlookup (req, peer) {
-    if (this.handlers && this.handlers.onlookup) this.handlers.onlookup(req, peer, this)
+    for (let i = 0; i < this.sessions.length; i++) {
+      const session = this.sessions[i]
+      const handlers = session.handlers
+
+      if (handlers.onlookup) handlers.onlookup(req, peer, session)
+    }
   }
 
   _oninfo (info, peer) {
@@ -331,14 +386,26 @@ class WakeupSession {
         peer.active = true
         this.activePeers++
         this._checkGC()
-        if (this.handlers && this.handlers.onpeeractive) this.handlers.onpeeractive(peer, this)
+
+        for (let i = 0; i < this.sessions.length; i++) {
+          const session = this.sessions[i]
+          const handlers = session.handlers
+
+          if (handlers.onpeeractive) handlers.onpeeractive(peer, session)
+        }
       }
     } else {
       if (peer.active) {
         peer.active = false
         this.activePeers--
         this._checkGC()
-        if (this.handlers && this.handlers.onpeerinactive) this.handlers.onpeerinactive(peer, this)
+
+        for (let i = 0; i < this.sessions.length; i++) {
+          const session = this.sessions[i]
+          const handlers = session.handlers
+
+          if (handlers.onpeerinactive) handlers.onpeerinactive(peer, session)
+        }
       }
     }
   }
