@@ -127,6 +127,7 @@ class WakeupPeer {
   }
 
   unlink (list) {
+    // note that since we pop here we can iterate in reverse safely in case a peer is removed in the same tick
     const head = list.pop()
     if (head === this) return
     head.index = this.index
@@ -140,6 +141,11 @@ class WakeupSession {
     this.topic = topic
     this.handlers = handlers
     this.isActive = handlers.active !== false
+    this.destroyed = false
+  }
+
+  get peers () {
+    return this.topic.peers
   }
 
   getPeer (stream) {
@@ -184,6 +190,8 @@ class WakeupSession {
   }
 
   destroy () {
+    if (this.destroyed) return
+    this.destroyed = true
     this.topic.removeSession(this)
   }
 }
@@ -215,6 +223,7 @@ class WakeupTopic {
     if (this.sessions.length >= session.index) return
     if (this.sessions[session.index] !== session) return
 
+    // same as with the peer, this allows us to iterate while removing if iterating backwards
     const head = this.sessions.pop()
     if (head !== session) {
       head.index = session.index
