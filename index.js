@@ -287,7 +287,7 @@ class WakeupTopic {
     const hex = b4a.toString(this.id, 'hex')
 
     this.gcing = false
-    this.state.sessions.delete(hex)
+    this.state.topics.delete(hex)
     this.state._removeGC(this)
   }
 
