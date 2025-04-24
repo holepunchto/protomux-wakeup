@@ -216,11 +216,12 @@ class WakeupTopic {
     const session = new WakeupSession(this, handlers)
     session.index = this.sessions.length
     this.sessions.push(session)
+    this._bumpActivity()
     return session
   }
 
   removeSession (session) {
-    if (this.sessions.length >= session.index) return
+    if (this.sessions.length <= session.index) return
     if (this.sessions[session.index] !== session) return
 
     // same as with the peer, this allows us to iterate while removing if iterating backwards
