@@ -148,6 +148,10 @@ class WakeupSession {
     return this.topic.peers
   }
 
+  addStream (stream) {
+    this.topic.addStream(stream)
+  }
+
   getPeer (stream) {
     return this.topic.peersByStream.get(stream) || null
   }
