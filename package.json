@@ -1,6 +1,6 @@
 {
   "name": "protomux-wakeup",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Wakeup protocol over protomux",
   "main": "index.js",
   "dependencies": {
