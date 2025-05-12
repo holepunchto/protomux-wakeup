@@ -106,7 +106,7 @@ module.exports = class WakeupSwarm {
   async _onpair (id, stream) {
     const hex = b4a.toString(id, 'hex')
     const w = this.topics.get(hex)
-    if (!w) return this.onwakeup(id, stream)
+    if (!w || !w.sessions.length) return this.onwakeup(id, stream)
     w._onopen(getMuxer(stream), false)
   }
 }
