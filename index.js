@@ -45,6 +45,13 @@ module.exports = class WakeupSwarm {
     return w.addSession(handlers)
   }
 
+  getSessions (capability, handlers = {}) {
+    const id = handlers.discoveryKey || crypto.discoveryKey(capability)
+    const hex = b4a.toString(id, 'hex')
+    const w = this.topics.get(hex)
+    return w ? w.sessions : []
+  }
+
   addStream (stream) {
     const noiseStream = stream.noiseStream || stream
 
