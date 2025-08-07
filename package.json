@@ -14,7 +14,7 @@
     "spec/hyperschema/*.js"
   ],
   "scripts": {
-    "test": "standard"
+    "test": "standard && brittle test/*.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/holepunchto/protomux-wakeup",
   "devDependencies": {
+    "brittle": "^3.17.1",
     "standard": "^17.1.2"
   }
 }
