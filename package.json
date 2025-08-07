@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/holepunchto/protomux-wakeup",
   "devDependencies": {
+    "@hyperswarm/secret-stream": "^6.8.1",
     "brittle": "^3.17.1",
     "standard": "^17.1.2"
   }
