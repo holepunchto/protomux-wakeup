@@ -52,6 +52,19 @@ module.exports = class WakeupSwarm {
     return w ? w.sessions : []
   }
 
+  hasStream (stream, capability, handlers = {}) {
+    if (!capability) {
+      const noiseStream = stream.noiseStream || stream
+      return this.muxers.has(getMuxer(muxer))
+    }
+
+    const id = handlers.discoveryKey || crypto.discoveryKey(capability)
+    const hex = b4a.toString(id, 'hex')
+    const t = this.topics.get(hex)
+
+    return t ? t.peersByStream.has(stream) : false
+  }
+
   addStream (stream) {
     const noiseStream = stream.noiseStream || stream
 
