@@ -55,7 +55,7 @@ module.exports = class WakeupSwarm {
   hasStream (stream, capability, handlers = {}) {
     if (!capability) {
       const noiseStream = stream.noiseStream || stream
-      return this.muxers.has(getMuxer(muxer))
+      return this.muxers.has(getMuxer(noiseStream))
     }
 
     const id = handlers.discoveryKey || crypto.discoveryKey(capability)
