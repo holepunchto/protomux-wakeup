@@ -144,6 +144,7 @@ class WakeupPeer {
     this.wireLookup = null
     this.wireAnnounce = null
     this.wireInfo = null
+    this.active = false
   }
 
   unlink (list) {
