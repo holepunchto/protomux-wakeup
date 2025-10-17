@@ -140,6 +140,22 @@ test('basic - last session destroyed gc\'s topic', async (t) => {
   t.is(topic.sessions.length, 0, 'no more sessions')
 })
 
+test('basic - topic doesnt gc if session is alive', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const w1 = new Wakeup()
+
+  const s1 = w1.session(cap)
+  const topic = s1.topic
+
+  // Trigger gc check
+  s1.inactive()
+  s1.active()
+
+  t.absent(topic.destroyed, 'topic isnt destroyed')
+  t.absent(w1.topicsGC.has(topic), 'topic isnt flagged for gc')
+})
+
 function create () {
   const w1 = new Wakeup()
   const w2 = new Wakeup()

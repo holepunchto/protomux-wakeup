@@ -229,7 +229,6 @@ class WakeupTopic {
     this.peers = []
     this.pendingPeers = []
     this.peersByStream = new Map()
-    this.activePeers = 0
     this.isActive = active
     this.idleTicks = 0
     this.gcing = false
@@ -343,7 +342,6 @@ class WakeupTopic {
     peer.index = this.peers.push(peer) - 1
 
     if (peer.active) {
-      this.activePeers++
       this._checkGC()
     }
 
@@ -357,7 +355,7 @@ class WakeupTopic {
   }
 
   _checkGC () {
-    const shouldGC = this.activePeers === 0 || this.sessions.length === 0
+    const shouldGC = this.sessions.length === 0
 
     if (shouldGC) {
       if (!this.gcing) {
@@ -385,7 +383,6 @@ class WakeupTopic {
 
     if (active) {
       peer.active = false
-      this.activePeers--
       this._checkGC()
     }
 
@@ -422,7 +419,6 @@ class WakeupTopic {
     if (info.active) {
       if (!peer.active) {
         peer.active = true
-        this.activePeers++
         this._checkGC()
 
         for (let i = this.sessions.length - 1; i >= 0; i--) {
@@ -435,7 +431,6 @@ class WakeupTopic {
     } else {
       if (peer.active) {
         peer.active = false
-        this.activePeers--
         this._checkGC()
 
         for (let i = this.sessions.length - 1; i >= 0; i--) {
