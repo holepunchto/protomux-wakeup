@@ -73,6 +73,39 @@ test('basic - session handler callbacks', async (t) => {
   s1.destroy()
 })
 
+test('basic - gc after peer is inactive & the session is destroyed', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+  const key = Buffer.alloc(32).fill('deadbeef')
+  const length = 1337
+
+  const [w1, w2] = create()
+
+  const tPeeradd = t.test('onpeeradd')
+  tPeeradd.plan(1)
+  const tPeerremove = t.test('onpeerremove')
+  tPeerremove.plan(1)
+
+  const s1 = w1.session(cap, {
+    onpeeradd: (peer) => tPeeradd.pass('called')
+  })
+
+  const s2 = w2.session(cap, {
+    onpeerremove: () => tPeerremove.pass('called'),
+    onlookup: (_, peer, session) => {
+      session.announce(peer, [{ key, length }])
+    }
+  })
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  s1.lookup(s1.peers[0])
+
+  s2.inactive()
+
+  // Only one peer needs to close the channel
+  s1.destroy()
+})
+
 function create () {
   const w1 = new Wakeup()
   const w2 = new Wakeup()
