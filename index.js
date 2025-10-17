@@ -240,6 +240,7 @@ class WakeupTopic {
     session.index = this.sessions.length
     this.sessions.push(session)
     this._bumpActivity()
+    this._checkGC()
     return session
   }
 
@@ -291,8 +292,6 @@ class WakeupTopic {
     for (const peer of this.pendingPeers) peer.wireInfo.send(info)
     for (const peer of this.peers) peer.wireInfo.send(info)
 
-    this._checkGC()
-
     if (active) this.state._onActive(this)
   }
 
@@ -341,10 +340,6 @@ class WakeupTopic {
     peer.pending = false
     peer.index = this.peers.push(peer) - 1
 
-    if (peer.active) {
-      this._checkGC()
-    }
-
     for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
@@ -381,10 +376,7 @@ class WakeupTopic {
 
     const active = peer.active
 
-    if (active) {
-      peer.active = false
-      this._checkGC()
-    }
+    if (active) peer.active = false
 
     peer.unlink(this.peers)
 
@@ -419,7 +411,6 @@ class WakeupTopic {
     if (info.active) {
       if (!peer.active) {
         peer.active = true
-        this._checkGC()
 
         for (let i = this.sessions.length - 1; i >= 0; i--) {
           const session = this.sessions[i]
@@ -431,7 +422,6 @@ class WakeupTopic {
     } else {
       if (peer.active) {
         peer.active = false
-        this._checkGC()
 
         for (let i = this.sessions.length - 1; i >= 0; i--) {
           const session = this.sessions[i]
