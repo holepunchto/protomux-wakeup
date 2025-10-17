@@ -357,7 +357,7 @@ class WakeupTopic {
   }
 
   _checkGC () {
-    const shouldGC = this.activePeers === 0 && this.sessions.length === 0
+    const shouldGC = this.activePeers === 0 || this.sessions.length === 0
 
     if (shouldGC) {
       if (!this.gcing) {
