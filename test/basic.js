@@ -138,6 +138,7 @@ test('basic - last session destroyed gc\'s topic', async (t) => {
   const topic = s1.topic
   s1.destroy()
   t.is(topic.sessions.length, 0, 'no more sessions')
+  t.ok(w1.topicsGC.has(topic), 'topic is flagged for gc')
 })
 
 test('basic - topic doesnt gc if session is alive', async (t) => {
