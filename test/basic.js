@@ -73,6 +73,88 @@ test('basic - session handler callbacks', async (t) => {
   s1.destroy()
 })
 
+test('basic - gc after the session is destroyed', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+  const key = Buffer.alloc(32).fill('deadbeef')
+  const length = 1337
+
+  const [w1, w2] = create()
+
+  const tPeeradd = t.test('onpeeradd')
+  tPeeradd.plan(1)
+  const tPeerremove = t.test('onpeerremove')
+  tPeerremove.plan(1)
+
+  const s1 = w1.session(cap, {
+    onpeeradd: (peer) => tPeeradd.pass('called')
+  })
+
+  w2.session(cap, {
+    onpeerremove: () => tPeerremove.pass('called'),
+    onlookup: (_, peer, session) => {
+      session.announce(peer, [{ key, length }])
+    }
+  })
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  s1.lookup(s1.peers[0])
+
+  // Only one peer needs to close the channel
+  s1.destroy()
+})
+
+test('basic - last session destroyed gc\'s topic', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+  const key = Buffer.alloc(32).fill('deadbeef')
+  const length = 1337
+
+  const [w1, w2] = create()
+
+  const tPeeradd = t.test('onpeeradd')
+  tPeeradd.plan(1)
+  const tPeerremove = t.test('onpeerremove')
+  tPeerremove.plan(1)
+
+  const s1 = w1.session(cap, {
+    onpeeradd: (peer) => tPeeradd.pass('called')
+  })
+
+  w2.session(cap, {
+    onpeerremove: () => tPeerremove.pass('called'),
+    onlookup: (_, peer, session) => {
+      session.announce(peer, [{ key, length }])
+    }
+  })
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  s1.lookup(s1.peers[0])
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  const topic = s1.topic
+  s1.destroy()
+  t.is(topic.sessions.length, 0, 'no more sessions')
+  t.ok(w1.topicsGC.has(topic), 'topic is flagged for gc')
+})
+
+test('basic - topic doesnt gc if at least one session is alive', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const w1 = new Wakeup()
+
+  const s1 = w1.session(cap)
+  const topic = s1.topic
+
+  // Trigger gc check
+  const s2 = w1.session(cap)
+  s2.destroy()
+
+  t.absent(topic.destroyed, 'topic isnt destroyed')
+  t.absent(w1.topicsGC.has(topic), 'topic isnt flagged for gc')
+})
+
 function create () {
   const w1 = new Wakeup()
   const w2 = new Wakeup()
