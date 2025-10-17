@@ -106,6 +106,40 @@ test('basic - gc after peer is inactive & the session is destroyed', async (t) =
   s1.destroy()
 })
 
+test('basic - last session destroyed gc\'s topic', async (t) => {
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+  const key = Buffer.alloc(32).fill('deadbeef')
+  const length = 1337
+
+  const [w1, w2] = create()
+
+  const tPeeradd = t.test('onpeeradd')
+  tPeeradd.plan(1)
+  const tPeerremove = t.test('onpeerremove')
+  tPeerremove.plan(1)
+
+  const s1 = w1.session(cap, {
+    onpeeradd: (peer) => tPeeradd.pass('called')
+  })
+
+  w2.session(cap, {
+    onpeerremove: () => tPeerremove.pass('called'),
+    onlookup: (_, peer, session) => {
+      session.announce(peer, [{ key, length }])
+    }
+  })
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  s1.lookup(s1.peers[0])
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  const topic = s1.topic
+  s1.destroy()
+  t.is(topic.sessions.length, 0, 'no more sessions')
+})
+
 function create () {
   const w1 = new Wakeup()
   const w2 = new Wakeup()
