@@ -18,6 +18,14 @@ module.exports = class WakeupSwarm {
     this.topics = new Map()
     this.topicsGC = new Set()
     this.muxers = new Set()
+    this.stats = {
+      sessionsOpened: 0,
+      sessionsClosed: 0,
+      topicsAdded: 0,
+      topicsGcd: 0,
+      peersAdded: 0,
+      peersRemoved: 0
+    }
 
     this.onwakeup = onwakeup
 
@@ -35,7 +43,6 @@ module.exports = class WakeupSwarm {
     if (w) return w.addSession(handlers)
 
     w = new WakeupTopic(this, id, capability, active)
-
     this.topics.set(hex, w)
 
     for (const muxer of this.muxers) {
@@ -129,6 +136,57 @@ module.exports = class WakeupSwarm {
     if (!w || !w.sessions.length) return this.onwakeup(id, stream)
     w._onopen(getMuxer(stream), false)
   }
+
+  registerMetrics (promClient) {
+    const self = this
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_sessions_opened',
+      help: 'The amount of sessions opened by protomux wakeup',
+      collect () {
+        this.set(self.stats.sessionsOpened)
+      }
+    })
+
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_sessions_closed',
+      help: 'The amount of sessions closed by protomux wakeup',
+      collect () {
+        this.set(self.stats.sessionsClosed)
+      }
+    })
+
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_topics_added',
+      help: 'The amount of topics added to protomux wakeup',
+      collect () {
+        this.set(self.stats.topicsAdded)
+      }
+    })
+
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_topics_gcd',
+      help: 'The amount of topics that got garbage collected by protomux wakeup',
+      collect () {
+        this.set(self.stats.topicsGcd)
+      }
+    })
+
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_peers_added',
+      help: 'The amount of peers added by protomux wakeup, across all topics',
+      collect () {
+        this.set(self.stats.peersAdded)
+      }
+    })
+
+    new promClient.Gauge({ // eslint-disable-line no-new
+      name: 'protomux_wakeup_peers_removed',
+      help: 'The amount of peers removed by protomux wakeup, across all topics',
+      collect () {
+        this.set(self.stats.peersRemoved)
+      }
+    })
+  }
 }
 
 class WakeupPeer {
@@ -144,9 +202,12 @@ class WakeupPeer {
     this.wireLookup = null
     this.wireAnnounce = null
     this.wireInfo = null
+
+    this.topic.state.stats.peersAdded++
   }
 
   unlink (list) {
+    this.topic.state.stats.peersRemoved++
     // note that since we pop here we can iterate in reverse safely in case a peer is removed in the same tick
     const head = list.pop()
     if (head === this) return
@@ -234,9 +295,12 @@ class WakeupTopic {
     this.idleTicks = 0
     this.gcing = false
     this.destroyed = false
+
+    this.state.stats.topicsAdded++
   }
 
   addSession (handlers) {
+    this.state.stats.sessionsOpened++
     const session = new WakeupSession(this, handlers)
     session.index = this.sessions.length
     this.sessions.push(session)
@@ -254,6 +318,7 @@ class WakeupTopic {
       head.index = session.index
       this.sessions[head.index] = head
     }
+    this.state.stats.sessionsClosed++
 
     this._bumpActivity()
     this._checkGC()
@@ -300,6 +365,7 @@ class WakeupTopic {
   teardown () {
     if (this.destroyed) return
     this.destroyed = true
+    this.state.stats.topicsGcd++
 
     for (let i = this.peers.length - 1; i >= 0; i--) {
       this.peers[i].channel.close()
