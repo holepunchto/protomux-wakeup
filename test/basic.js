@@ -1,6 +1,8 @@
 const test = require('brittle')
 const SecretStream = require('@hyperswarm/secret-stream')
 const crypto = require('hypercore-crypto')
+const promClient = require('prom-client')
+
 const Wakeup = require('../index')
 
 test('basic - onwakeup', (t) => {
@@ -89,6 +91,77 @@ function create() {
 
   return [w1, w2]
 }
+
+test('stats', (t) => {
+  t.plan(4)
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+  const w1 = new Wakeup()
+
+  const w2 = new Wakeup(function onwakeup() {
+    t.alike(w1.stats, {
+      sessionsOpened: 1,
+      sessionsClosed: 0,
+      topicsAdded: 1,
+      topicsGcd: 0,
+      peersAdded: 1,
+      peersRemoved: 0
+    })
+    s.destroy()
+    t.alike(w1.stats, {
+      sessionsOpened: 1,
+      sessionsClosed: 1,
+      topicsAdded: 1,
+      topicsGcd: 0,
+      peersAdded: 1,
+      peersRemoved: 0
+    })
+    s.topic.teardown()
+    t.alike(w1.stats, {
+      sessionsOpened: 1,
+      sessionsClosed: 1,
+      topicsAdded: 1,
+      topicsGcd: 1,
+      peersAdded: 1,
+      peersRemoved: 1
+    })
+  })
+
+  const s1 = new SecretStream(true)
+  const s2 = new SecretStream(false)
+
+  replicate(s1, s2)
+
+  w1.addStream(s1)
+  w2.addStream(s2)
+
+  const s = w1.session(cap)
+  s.active()
+
+  t.alike(w1.stats, {
+    sessionsOpened: 1,
+    sessionsClosed: 0,
+    topicsAdded: 1,
+    topicsGcd: 0,
+    peersAdded: 0,
+    peersRemoved: 0
+  })
+})
+
+test('Prometheus metrics', async (t) => {
+  const w1 = new Wakeup()
+  w1.registerMetrics(promClient)
+  t.teardown(() => {
+    promClient.register.clear()
+  })
+
+  const metrics = await promClient.register.metrics()
+  t.ok(metrics.includes('protomux_wakeup_sessions_opened 0'))
+  t.ok(metrics.includes('protomux_wakeup_sessions_closed 0'))
+  t.ok(metrics.includes('protomux_wakeup_topics_added 0'))
+  t.ok(metrics.includes('protomux_wakeup_topics_gcd 0'))
+  t.ok(metrics.includes('protomux_wakeup_peers_added 0'))
+  t.ok(metrics.includes('protomux_wakeup_peers_removed 0'))
+})
 
 function replicate(a, b) {
   a.rawStream.pipe(b.rawStream).pipe(a.rawStream)
