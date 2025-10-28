@@ -9,10 +9,7 @@ test('basic - onwakeup', (t) => {
   const cap = Buffer.alloc(32).fill('stuffimcapableof')
   const w1 = new Wakeup()
 
-  const w2 = new Wakeup(function onwakeup(id, mux) {
-    t.is(mux.stream, s2)
-    t.alike(id, crypto.discoveryKey(cap))
-  })
+  const w2 = new Wakeup(onwakeup)
 
   const s1 = new SecretStream(true)
   const s2 = new SecretStream(false)
@@ -24,6 +21,11 @@ test('basic - onwakeup', (t) => {
 
   const s = w1.session(cap)
   s.active()
+
+  function onwakeup(id, mux) {
+    t.is(mux.stream, s2)
+    t.alike(id, crypto.discoveryKey(cap))
+  }
 })
 
 test('basic - session handler callbacks', async (t) => {
