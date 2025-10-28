@@ -9,12 +9,18 @@
     "hyperschema": "^1.10.4",
     "protomux": "^3.10.1"
   },
+  "devDependencies": {
+    "lunte": "^1.0.0",
+    "prettier": "^3.6.2",
+    "prettier-config-holepunch": "^2.0.0"
+  },
   "files": [
     "index.js",
     "spec/hyperschema/*.js"
   ],
   "scripts": {
-    "test": "standard"
+    "format": "prettier --write .",
+    "test": "prettier --check . && lunte"
   },
   "repository": {
     "type": "git",
@@ -25,8 +31,5 @@
   "bugs": {
     "url": "https://github.com/holepunchto/protomux-wakeup/issues"
   },
-  "homepage": "https://github.com/holepunchto/protomux-wakeup",
-  "devDependencies": {
-    "standard": "^17.1.2"
-  }
+  "homepage": "https://github.com/holepunchto/protomux-wakeup"
 }

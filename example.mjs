@@ -7,8 +7,8 @@ const { bootstrap } = await testnet(5)
 const a = new Hyperswarm({ bootstrap })
 const b = new Hyperswarm({ bootstrap })
 
-a.on('connection', c => sw.addStream(c))
-b.on('connection', c => sw2.addStream(c))
+a.on('connection', (c) => sw.addStream(c))
+b.on('connection', (c) => sw2.addStream(c))
 
 await a.join(Buffer.alloc(32, 'yo')).flushed()
 await b.join(Buffer.alloc(32, 'yo')).flushed()
@@ -16,14 +16,14 @@ await b.join(Buffer.alloc(32, 'yo')).flushed()
 const sw2 = new Wakeup((id) => {
   const s = sw2.session(Buffer.alloc(32, 'cap'), {
     active: false,
-    onlookup (req, peer) {
+    onlookup(req, peer) {
       console.log('got wakeup request', req)
       s.announce(peer, [{ key: b4a.alloc(32, 'fill'), length: 42 }])
     },
-    onpeeradd () {
+    onpeeradd() {
       console.log('remote got peer')
     },
-    onpeeractive () {
+    onpeeractive() {
       console.log('remote got active peer')
     }
   })
@@ -33,19 +33,19 @@ const sw = new Wakeup()
 
 sw.session(Buffer.alloc(32, 'cap'), {
   active: false,
-  onannounce (wakeup, peer) {
+  onannounce(wakeup, peer) {
     console.log('[s2] got announce', wakeup)
   },
-  onpeeradd (peer) {
+  onpeeradd(peer) {
     console.log('[s2] got peer...')
   }
 })
 
 const s = sw.session(Buffer.alloc(32, 'cap'), {
-  onannounce (wakeup, peer) {
+  onannounce(wakeup, peer) {
     console.log('[s] got announce', wakeup)
   },
-  onpeeradd (peer) {
+  onpeeradd(peer) {
     console.log('[s] got peer...')
     s.lookup(peer)
   }

@@ -3,10 +3,7 @@ const Protomux = require('protomux')
 const b4a = require('b4a')
 const schema = require('./spec/hyperschema')
 
-const [
-  NS_INITATOR,
-  NS_RESPONDER
-] = crypto.namespace('wakeup', 2)
+const [NS_INITATOR, NS_RESPONDER] = crypto.namespace('wakeup', 2)
 
 const Handshake = schema.getEncoding('@wakeup/handshake')
 const Announce = schema.getEncoding('@wakeup/announce')
@@ -14,7 +11,7 @@ const Lookup = schema.getEncoding('@wakeup/lookup')
 const Info = schema.getEncoding('@wakeup/info')
 
 module.exports = class WakeupSwarm {
-  constructor (onwakeup = noop) {
+  constructor(onwakeup = noop) {
     this.topics = new Map()
     this.topicsGC = new Set()
     this.muxers = new Set()
@@ -25,7 +22,7 @@ module.exports = class WakeupSwarm {
     this._gcBound = this._gc.bind(this)
   }
 
-  session (capability, handlers = {}) {
+  session(capability, handlers = {}) {
     const id = handlers.discoveryKey || crypto.discoveryKey(capability)
     const active = handlers.active !== false
     const hex = b4a.toString(id, 'hex')
@@ -45,14 +42,14 @@ module.exports = class WakeupSwarm {
     return w.addSession(handlers)
   }
 
-  getSessions (capability, handlers = {}) {
+  getSessions(capability, handlers = {}) {
     const id = handlers.discoveryKey || crypto.discoveryKey(capability)
     const hex = b4a.toString(id, 'hex')
     const w = this.topics.get(hex)
     return w ? w.sessions : []
   }
 
-  hasStream (stream, capability, handlers = {}) {
+  hasStream(stream, capability, handlers = {}) {
     if (!capability) {
       const noiseStream = stream.noiseStream || stream
       return this.muxers.has(getMuxer(noiseStream))
@@ -65,7 +62,7 @@ module.exports = class WakeupSwarm {
     return t ? t.peersByStream.has(stream) : false
   }
 
-  addStream (stream) {
+  addStream(stream) {
     const noiseStream = stream.noiseStream || stream
 
     if (!noiseStream.connected) {
@@ -74,7 +71,7 @@ module.exports = class WakeupSwarm {
     }
 
     const muxer = getMuxer(noiseStream)
-    muxer.pair({ protocol: 'wakeup' }, id => this._onpair(id, muxer))
+    muxer.pair({ protocol: 'wakeup' }, (id) => this._onpair(id, muxer))
 
     this.muxers.add(muxer)
     noiseStream.on('close', () => this.muxers.delete(muxer))
@@ -85,13 +82,13 @@ module.exports = class WakeupSwarm {
     }
   }
 
-  _onActive (w) {
+  _onActive(w) {
     for (const m of this.muxers) {
       w._onopen(m, false)
     }
   }
 
-  _addGC (topic) {
+  _addGC(topic) {
     if (topic.destroyed) return
     this.topicsGC.add(topic)
     if (this._gcInterval === null) {
@@ -99,7 +96,7 @@ module.exports = class WakeupSwarm {
     }
   }
 
-  _removeGC (topic) {
+  _removeGC(topic) {
     this.topicsGC.delete(topic)
     if (this.topicsGC.size === 0 && this._gcInterval) {
       clearInterval(this._gcInterval)
@@ -107,7 +104,7 @@ module.exports = class WakeupSwarm {
     }
   }
 
-  _gc () {
+  _gc() {
     const destroy = []
     for (const w of this.topicsGC) {
       w.idleTicks++
@@ -116,14 +113,14 @@ module.exports = class WakeupSwarm {
     for (const w of destroy) w.teardown()
   }
 
-  destroy () {
+  destroy() {
     if (this._gcInterval) clearInterval(this._gcInterval)
     this._gcInterval = null
 
     for (const w of this.topics.values()) w.teardown()
   }
 
-  async _onpair (id, stream) {
+  async _onpair(id, stream) {
     const hex = b4a.toString(id, 'hex')
     const w = this.topics.get(hex)
     if (!w || !w.sessions.length) return this.onwakeup(id, stream)
@@ -132,7 +129,7 @@ module.exports = class WakeupSwarm {
 }
 
 class WakeupPeer {
-  constructor (topic) {
+  constructor(topic) {
     this.index = 0
     this.userData = null // for the user
     this.clock = 0 // for the user, v useful to reduce traffic
@@ -146,7 +143,7 @@ class WakeupPeer {
     this.wireInfo = null
   }
 
-  unlink (list) {
+  unlink(list) {
     // note that since we pop here we can iterate in reverse safely in case a peer is removed in the same tick
     const head = list.pop()
     if (head === this) return
@@ -156,7 +153,7 @@ class WakeupPeer {
 }
 
 class WakeupSession {
-  constructor (topic, handlers) {
+  constructor(topic, handlers) {
     this.index = 0
     this.topic = topic
     this.handlers = handlers
@@ -164,19 +161,23 @@ class WakeupSession {
     this.destroyed = false
   }
 
-  get peers () {
+  get peers() {
     return this.topic.peers
   }
 
-  addStream (stream) {
+  hasStream(stream) {
+    return !!this.getPeer(stream)
+  }
+
+  addStream(stream) {
     this.topic.addStream(stream)
   }
 
-  getPeer (stream) {
+  getPeer(stream) {
     return this.topic.peersByStream.get(stream) || null
   }
 
-  broadcastLookup (req) {
+  broadcastLookup(req) {
     for (const peer of this.topic.pendingPeers) {
       this.lookup(peer, req)
     }
@@ -185,35 +186,35 @@ class WakeupSession {
     }
   }
 
-  lookupByStream (stream, req) {
+  lookupByStream(stream, req) {
     const peer = this.topic.peersByStream.get(stream)
     if (peer) this.lookup(peer, req)
   }
 
-  lookup (peer, req) {
+  lookup(peer, req) {
     peer.wireLookup.send(req || { hash: null })
   }
 
-  announceByStream (stream, wakeup) {
+  announceByStream(stream, wakeup) {
     const peer = this.topic.peersByStream.get(stream)
     if (peer && !peer.pending) this.announce(peer, wakeup)
   }
 
-  announce (peer, wakeup) {
+  announce(peer, wakeup) {
     peer.wireAnnounce.send(wakeup)
   }
 
-  active () {
+  active() {
     this.isActive = true
     this.topic._bumpActivity()
   }
 
-  inactive () {
+  inactive() {
     this.isActive = false
     this.topic._bumpActivity()
   }
 
-  destroy () {
+  destroy() {
     if (this.destroyed) return
     this.destroyed = true
     this.topic.removeSession(this)
@@ -221,7 +222,7 @@ class WakeupSession {
 }
 
 class WakeupTopic {
-  constructor (state, id, capability, active) {
+  constructor(state, id, capability, active) {
     this.state = state
     this.sessions = []
     this.id = id
@@ -236,7 +237,7 @@ class WakeupTopic {
     this.destroyed = false
   }
 
-  addSession (handlers) {
+  addSession(handlers) {
     const session = new WakeupSession(this, handlers)
     session.index = this.sessions.length
     this.sessions.push(session)
@@ -244,7 +245,7 @@ class WakeupTopic {
     return session
   }
 
-  removeSession (session) {
+  removeSession(session) {
     if (this.sessions.length <= session.index) return
     if (this.sessions[session.index] !== session) return
 
@@ -259,7 +260,7 @@ class WakeupTopic {
     this._checkGC()
   }
 
-  _bumpActivity () {
+  _bumpActivity() {
     let isActive = false
 
     for (let i = this.sessions.length - 1; i >= 0; i--) {
@@ -273,20 +274,20 @@ class WakeupTopic {
     else this.inactive()
   }
 
-  active () {
+  active() {
     if (this.isActive) return
     this.idleTicks = 0
     this.isActive = true
     this._updateActive(true)
   }
 
-  inactive () {
+  inactive() {
     if (!this.isActive) return
     this.isActive = false
     this._updateActive(false)
   }
 
-  _updateActive (active) {
+  _updateActive(active) {
     const info = { active }
 
     for (const peer of this.pendingPeers) peer.wireInfo.send(info)
@@ -297,7 +298,7 @@ class WakeupTopic {
     if (active) this.state._onActive(this)
   }
 
-  teardown () {
+  teardown() {
     if (this.destroyed) return
     this.destroyed = true
 
@@ -316,20 +317,25 @@ class WakeupTopic {
     this.state._removeGC(this)
   }
 
-  addStream (stream) {
+  addStream(stream) {
     this._onopen(getMuxer(stream), false)
   }
 
-  _proveCapabilityTo (stream) {
+  _proveCapabilityTo(stream) {
     return this._makeCapability(stream.isInitiator, stream.handshakeHash)
   }
 
-  _makeCapability (isInitiator, handshakeHash) {
+  _makeCapability(isInitiator, handshakeHash) {
     return crypto.hash([isInitiator ? NS_INITATOR : NS_RESPONDER, this.capability, handshakeHash])
   }
 
-  _addPeer (peer, open) {
-    if (!b4a.equals(open.capability, this._makeCapability(!peer.stream.isInitiator, peer.stream.handshakeHash))) {
+  _addPeer(peer, open) {
+    if (
+      !b4a.equals(
+        open.capability,
+        this._makeCapability(!peer.stream.isInitiator, peer.stream.handshakeHash)
+      )
+    ) {
       peer.channel.close()
       return
     }
@@ -356,7 +362,7 @@ class WakeupTopic {
     }
   }
 
-  _checkGC () {
+  _checkGC() {
     const shouldGC = this.activePeers === 0 && this.sessions.length === 0
 
     if (shouldGC) {
@@ -372,7 +378,7 @@ class WakeupTopic {
     }
   }
 
-  _removePeer (peer) {
+  _removePeer(peer) {
     peer.removed = true
     this.peersByStream.delete(peer.stream)
 
@@ -400,7 +406,7 @@ class WakeupTopic {
     }
   }
 
-  _onannounce (wakeup, peer) {
+  _onannounce(wakeup, peer) {
     for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
@@ -409,7 +415,7 @@ class WakeupTopic {
     }
   }
 
-  _onlookup (req, peer) {
+  _onlookup(req, peer) {
     for (let i = this.sessions.length - 1; i >= 0; i--) {
       const session = this.sessions[i]
       const handlers = session.handlers
@@ -418,7 +424,7 @@ class WakeupTopic {
     }
   }
 
-  _oninfo (info, peer) {
+  _oninfo(info, peer) {
     if (info.active) {
       if (!peer.active) {
         peer.active = true
@@ -448,7 +454,7 @@ class WakeupTopic {
     }
   }
 
-  _onopen (muxer, unique) {
+  _onopen(muxer, unique) {
     if (!unique && this.peersByStream.has(muxer.stream)) return
 
     const peer = new WakeupPeer(this)
@@ -486,32 +492,32 @@ class WakeupTopic {
   }
 }
 
-function onchannelopen (open, channel) {
+function onchannelopen(open, channel) {
   const peer = channel.userData
   peer.topic._addPeer(peer, open)
 }
 
-function onchannelclose (close, channel) {
+function onchannelclose(close, channel) {
   const peer = channel.userData
   peer.topic._removePeer(peer)
 }
 
-function onlookup (req, channel) {
+function onlookup(req, channel) {
   const peer = channel.userData
   peer.topic._onlookup(req, peer)
 }
 
-function onannounce (wakeup, channel) {
+function onannounce(wakeup, channel) {
   const peer = channel.userData
   peer.topic._onannounce(wakeup, peer)
 }
 
-function onchannelinfo (info, channel) {
+function onchannelinfo(info, channel) {
   const peer = channel.userData
   peer.topic._oninfo(info, peer)
 }
 
-function getMuxer (stream) {
+function getMuxer(stream) {
   if (Protomux.isProtomux(stream)) return stream
   if (stream.noiseStream.userData) return stream.noiseStream.userData
   const mux = Protomux.from(stream.noiseStream)
@@ -519,4 +525,4 @@ function getMuxer (stream) {
   return mux
 }
 
-function noop () {}
+function noop() {}
