@@ -43,6 +43,7 @@ module.exports = class WakeupSwarm {
     if (w) return w.addSession(handlers)
 
     w = new WakeupTopic(this, id, capability, active)
+
     this.topics.set(hex, w)
 
     for (const muxer of this.muxers) {
@@ -202,7 +203,7 @@ class WakeupPeer {
     this.wireLookup = null
     this.wireAnnounce = null
     this.wireInfo = null
-
+    this.active = false
     this.topic.state.stats.peersAdded++
   }
 
