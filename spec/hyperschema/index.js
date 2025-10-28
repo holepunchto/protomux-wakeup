@@ -11,15 +11,15 @@ let version = VERSION
 
 // @wakeup/info
 const encoding0 = {
-  preencode (state, m) {
+  preencode(state, m) {
     state.end++ // max flag is 1 so always one byte
   },
-  encode (state, m) {
+  encode(state, m) {
     const flags = m.active ? 1 : 0
 
     c.uint.encode(state, flags)
   },
-  decode (state) {
+  decode(state) {
     const flags = c.uint.decode(state)
 
     return {
@@ -30,19 +30,19 @@ const encoding0 = {
 
 // @wakeup/handshake
 const encoding1 = {
-  preencode (state, m) {
+  preencode(state, m) {
     c.uint.preencode(state, m.version)
     c.fixed32.preencode(state, m.capability)
     state.end++ // max flag is 1 so always one byte
   },
-  encode (state, m) {
+  encode(state, m) {
     const flags = m.active ? 1 : 0
 
     c.uint.encode(state, m.version)
     c.fixed32.encode(state, m.capability)
     c.uint.encode(state, flags)
   },
-  decode (state) {
+  decode(state) {
     const r0 = c.uint.decode(state)
     const r1 = c.fixed32.decode(state)
     const flags = c.uint.decode(state)
@@ -57,15 +57,15 @@ const encoding1 = {
 
 // @wakeup/writer
 const encoding2 = {
-  preencode (state, m) {
+  preencode(state, m) {
     c.fixed32.preencode(state, m.key)
     c.uint.preencode(state, m.length)
   },
-  encode (state, m) {
+  encode(state, m) {
     c.fixed32.encode(state, m.key)
     c.uint.encode(state, m.length)
   },
-  decode (state) {
+  decode(state) {
     const r0 = c.fixed32.decode(state)
     const r1 = c.uint.decode(state)
 
@@ -81,19 +81,19 @@ const encoding3 = c.array(encoding2)
 
 // @wakeup/lookup
 const encoding4 = {
-  preencode (state, m) {
+  preencode(state, m) {
     state.end++ // max flag is 1 so always one byte
 
     if (m.hash) c.fixed32.preencode(state, m.hash)
   },
-  encode (state, m) {
+  encode(state, m) {
     const flags = m.hash ? 1 : 0
 
     c.uint.encode(state, flags)
 
     if (m.hash) c.fixed32.encode(state, m.hash)
   },
-  decode (state) {
+  decode(state) {
     const flags = c.uint.decode(state)
 
     return {
@@ -102,49 +102,56 @@ const encoding4 = {
   }
 }
 
-function setVersion (v) {
+function setVersion(v) {
   version = v
 }
 
-function encode (name, value, v = VERSION) {
+function encode(name, value, v = VERSION) {
   version = v
   return c.encode(getEncoding(name), value)
 }
 
-function decode (name, buffer, v = VERSION) {
+function decode(name, buffer, v = VERSION) {
   version = v
   return c.decode(getEncoding(name), buffer)
 }
 
-function getEnum (name) {
+function getEnum(name) {
   switch (name) {
-    default: throw new Error('Enum not found ' + name)
+    default:
+      throw new Error('Enum not found ' + name)
   }
 }
 
-function getEncoding (name) {
+function getEncoding(name) {
   switch (name) {
-    case '@wakeup/info': return encoding0
-    case '@wakeup/handshake': return encoding1
-    case '@wakeup/writer': return encoding2
-    case '@wakeup/announce': return encoding3
-    case '@wakeup/lookup': return encoding4
-    default: throw new Error('Encoder not found ' + name)
+    case '@wakeup/info':
+      return encoding0
+    case '@wakeup/handshake':
+      return encoding1
+    case '@wakeup/writer':
+      return encoding2
+    case '@wakeup/announce':
+      return encoding3
+    case '@wakeup/lookup':
+      return encoding4
+    default:
+      throw new Error('Encoder not found ' + name)
   }
 }
 
-function getStruct (name, v = VERSION) {
+function getStruct(name, v = VERSION) {
   const enc = getEncoding(name)
   return {
-    preencode (state, m) {
+    preencode(state, m) {
       version = v
       enc.preencode(state, m)
     },
-    encode (state, m) {
+    encode(state, m) {
       version = v
       enc.encode(state, m)
     },
-    decode (state) {
+    decode(state) {
       version = v
       return enc.decode(state)
     }
@@ -153,4 +160,13 @@ function getStruct (name, v = VERSION) {
 
 const resolveStruct = getStruct // compat
 
-module.exports = { resolveStruct, getStruct, getEnum, getEncoding, encode, decode, setVersion, version }
+module.exports = {
+  resolveStruct,
+  getStruct,
+  getEnum,
+  getEncoding,
+  encode,
+  decode,
+  setVersion,
+  version
+}

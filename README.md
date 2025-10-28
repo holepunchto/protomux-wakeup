@@ -8,7 +8,7 @@ npm install protomux-wakeup
 
 ## Usage
 
-``` js
+```js
 const Wakeup = require('protomux-wakeup')
 
 const w = new Wakeup()

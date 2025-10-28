@@ -9,7 +9,7 @@ test('basic - onwakeup', (t) => {
   const cap = Buffer.alloc(32).fill('stuffimcapableof')
   const w1 = new Wakeup()
 
-  const w2 = new Wakeup(function onwakeup (id, mux) {
+  const w2 = new Wakeup(function onwakeup(id, mux) {
     t.is(mux.stream, s2)
     t.alike(id, crypto.discoveryKey(cap))
   })
@@ -73,7 +73,7 @@ test('basic - session handler callbacks', async (t) => {
   s1.destroy()
 })
 
-function create () {
+function create() {
   const w1 = new Wakeup()
   const w2 = new Wakeup()
 
@@ -88,6 +88,6 @@ function create () {
   return [w1, w2]
 }
 
-function replicate (a, b) {
+function replicate(a, b) {
   a.rawStream.pipe(b.rawStream).pipe(a.rawStream)
 }
