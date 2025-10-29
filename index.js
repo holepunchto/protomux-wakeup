@@ -212,7 +212,6 @@ class WakeupPeer {
   }
 
   unlink(list) {
-    this.topic.state.stats.peersRemoved++
     // note that since we pop here we can iterate in reverse safely in case a peer is removed in the same tick
     const head = list.pop()
     if (head === this) return
@@ -455,6 +454,7 @@ class WakeupTopic {
   }
 
   _removePeer(peer) {
+    this.state.stats.peersRemoved++
     peer.removed = true
     this.peersByStream.delete(peer.stream)
 
