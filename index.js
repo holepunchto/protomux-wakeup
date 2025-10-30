@@ -11,7 +11,9 @@ const Lookup = schema.getEncoding('@wakeup/lookup')
 const Info = schema.getEncoding('@wakeup/info')
 
 module.exports = class WakeupSwarm {
-  constructor(onwakeup = noop) {
+  constructor(onwakeup = noop, { gcTickTime = 2000 } = {}) {
+    this.gcTickTime = gcTickTime
+
     this.topics = new Map()
     this.topicsGC = new Set()
     this.muxers = new Set()
@@ -103,7 +105,7 @@ module.exports = class WakeupSwarm {
     if (topic.destroyed) return
     this.topicsGC.add(topic)
     if (this._gcInterval === null) {
-      this._gcInterval = setInterval(this._gcBound, 2000)
+      this._gcInterval = setInterval(this._gcBound, this.gcTickTime)
     }
   }
 
