@@ -92,8 +92,8 @@ function create() {
   return [w1, w2]
 }
 
-test('stats', (t) => {
-  t.plan(4)
+test('stats', async (t) => {
+  t.plan(6)
   const cap = Buffer.alloc(32).fill('stuffimcapableof')
   const w1 = new Wakeup()
 
@@ -104,8 +104,20 @@ test('stats', (t) => {
       topicsAdded: 1,
       topicsGcd: 0,
       peersAdded: 1,
-      peersRemoved: 0
+      peersRemoved: 0,
+      wireAnnounce: { rx: 0, tx: 0 },
+      wireLookup: { rx: 0, tx: 0 },
+      wireInfo: { rx: 0, tx: 0 }
     })
+
+    s.broadcastLookup()
+    t.is(w1.stats.wireLookup.tx, 1)
+
+    // Unsure if it's guaranteed where the peer is, so we just consider both
+    const peer = [...s.topic.peers, ...s.topic.pendingPeers][0]
+    s.announce(peer, [])
+    t.is(w1.stats.wireAnnounce.tx, 1)
+
     s.destroy()
     t.alike(w1.stats, {
       sessionsOpened: 1,
@@ -113,7 +125,10 @@ test('stats', (t) => {
       topicsAdded: 1,
       topicsGcd: 0,
       peersAdded: 1,
-      peersRemoved: 0
+      peersRemoved: 0,
+      wireAnnounce: { rx: 0, tx: 1 },
+      wireLookup: { rx: 0, tx: 1 },
+      wireInfo: { rx: 0, tx: 1 }
     })
     s.topic.teardown()
     t.alike(w1.stats, {
@@ -122,13 +137,15 @@ test('stats', (t) => {
       topicsAdded: 1,
       topicsGcd: 1,
       peersAdded: 1,
-      peersRemoved: 1
+      peersRemoved: 1,
+      wireAnnounce: { rx: 0, tx: 1 },
+      wireLookup: { rx: 0, tx: 1 },
+      wireInfo: { rx: 0, tx: 1 }
     })
   })
 
   const s1 = new SecretStream(true)
   const s2 = new SecretStream(false)
-
   replicate(s1, s2)
 
   w1.addStream(s1)
@@ -143,7 +160,10 @@ test('stats', (t) => {
     topicsAdded: 1,
     topicsGcd: 0,
     peersAdded: 0,
-    peersRemoved: 0
+    peersRemoved: 0,
+    wireAnnounce: { rx: 0, tx: 0 },
+    wireLookup: { rx: 0, tx: 0 },
+    wireInfo: { rx: 0, tx: 0 }
   })
 })
 

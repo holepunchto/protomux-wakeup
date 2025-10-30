@@ -21,7 +21,10 @@ module.exports = class WakeupSwarm {
       topicsAdded: 0,
       topicsGcd: 0,
       peersAdded: 0,
-      peersRemoved: 0
+      peersRemoved: 0,
+      wireAnnounce: { rx: 0, tx: 0 },
+      wireLookup: { rx: 0, tx: 0 },
+      wireInfo: { rx: 0, tx: 0 }
     }
 
     this.onwakeup = onwakeup
@@ -261,6 +264,7 @@ class WakeupSession {
   }
 
   lookup(peer, req) {
+    peer.topic.state.stats.wireLookup.tx++
     peer.wireLookup.send(req || { hash: null })
   }
 
@@ -270,6 +274,7 @@ class WakeupSession {
   }
 
   announce(peer, wakeup) {
+    peer.topic.state.stats.wireAnnounce.tx++
     peer.wireAnnounce.send(wakeup)
   }
 
@@ -364,8 +369,14 @@ class WakeupTopic {
   _updateActive(active) {
     const info = { active }
 
-    for (const peer of this.pendingPeers) peer.wireInfo.send(info)
-    for (const peer of this.peers) peer.wireInfo.send(info)
+    for (const peer of this.pendingPeers) {
+      peer.topic.state.stats.wireInfo.tx++
+      peer.wireInfo.send(info)
+    }
+    for (const peer of this.peers) {
+      peer.topic.state.stats.wireInfo.tx++
+      peer.wireInfo.send(info)
+    }
 
     this._checkGC()
 
@@ -580,16 +591,19 @@ function onchannelclose(close, channel) {
 
 function onlookup(req, channel) {
   const peer = channel.userData
+  peer.topic.state.stats.wireLookup.rx++
   peer.topic._onlookup(req, peer)
 }
 
 function onannounce(wakeup, channel) {
   const peer = channel.userData
+  peer.topic.state.stats.wireAnnounce.rx++
   peer.topic._onannounce(wakeup, peer)
 }
 
 function onchannelinfo(info, channel) {
   const peer = channel.userData
+  peer.topic.state.stats.wireInfo.rx++
   peer.topic._oninfo(info, peer)
 }
 
