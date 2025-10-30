@@ -92,7 +92,7 @@ function create() {
   return [w1, w2]
 }
 
-test('stats', async (t) => {
+test('stats', (t) => {
   t.plan(6)
   const cap = Buffer.alloc(32).fill('stuffimcapableof')
   const w1 = new Wakeup()
