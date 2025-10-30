@@ -365,6 +365,7 @@ class WakeupTopic {
     session.index = this.sessions.length
     this.sessions.push(session)
     this._bumpActivity()
+    this._checkGC()
     return session
   }
 
