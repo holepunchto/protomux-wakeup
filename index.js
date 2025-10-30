@@ -450,6 +450,7 @@ class WakeupTopic {
     this.state._removeGC(this)
 
     for (let i = this.sessions.length - 1; i >= 0; i--) {
+      this.state.stats.sessionsClosed++
       const session = this.sessions[i]
       if (session.handlers.ondestroy) session.handlers.ondestroy(session)
     }
