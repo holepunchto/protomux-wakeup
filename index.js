@@ -259,8 +259,6 @@ class WakeupPeer {
     this.wireAnnounce = null
     this.wireInfo = null
     this.active = false
-
-    this.topic.state.stats.peersAdded++
   }
 
   unlink(list) {
@@ -609,6 +607,8 @@ class WakeupTopic {
     })
 
     if (!ch) return
+
+    this.state.stats.peersAdded++
 
     peer.channel = ch
     peer.stream = muxer.stream
