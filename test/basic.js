@@ -181,6 +181,12 @@ test('Prometheus metrics', async (t) => {
   t.ok(metrics.includes('protomux_wakeup_topics_gcd 0'))
   t.ok(metrics.includes('protomux_wakeup_peers_added 0'))
   t.ok(metrics.includes('protomux_wakeup_peers_removed 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_announce_tx 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_announce_rx 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_info_rx 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_info_tx 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_lookup_rx 0'))
+  t.ok(metrics.includes('protomux_wakeup_wire_lookup_tx 0'))
 })
 
 function replicate(a, b) {
