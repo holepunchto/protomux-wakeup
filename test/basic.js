@@ -31,35 +31,40 @@ test('basic - onwakeup', (t) => {
 })
 
 test('basic - session handler callbacks', async (t) => {
-  t.plan(7)
-
   const cap = Buffer.alloc(32).fill('stuffimcapableof')
   const key = Buffer.alloc(32).fill('deadbeef')
   const length = 1337
 
   const [w1, w2] = create()
 
+  // Plan out expected handler calls
+  const tPeerremove = t.test('onpeerremove')
+  tPeerremove.plan(1)
+  const tPeeractive = t.test('onpeeractive')
+  tPeeractive.plan(2) // once for peeradd & once manually called
+  const tPeerinactive = t.test('onpeerinactive')
+  tPeerinactive.plan(2) // once for manually called & once for peerremove
+  const tLookup = t.test('onlookup')
+  tLookup.plan(1)
+
+  const tPeeradd = t.test('onpeeradd')
+  tPeeradd.plan(1)
+  const tAnnounce = t.test('onannounce')
+  tAnnounce.plan(1)
+
   const s1 = w1.session(cap, {
-    onpeeradd: (peer) => {
-      t.pass('onpeeradd called')
-    },
+    onpeeradd: (peer) => tPeeradd.pass('called'),
     onannounce: (wakeup) => {
-      t.alike(wakeup, [{ key, length }], 'received wakeups')
+      tAnnounce.alike(wakeup, [{ key, length }], 'received wakeups')
     }
   })
 
   w2.session(cap, {
-    onpeerremove: () => {
-      t.pass('onpeerremove called')
-    },
-    onpeeractive: () => {
-      t.pass('onpeeractive called')
-    },
-    onpeerinactive: () => {
-      t.pass('onpeerinactive called')
-    },
+    onpeerremove: () => tPeerremove.pass('called'),
+    onpeeractive: () => tPeeractive.pass('called'),
+    onpeerinactive: () => tPeerinactive.pass('called'),
     onlookup: (_, peer, session) => {
-      t.pass('onlookup called')
+      tLookup.pass('called')
       session.announce(peer, [{ key, length }])
     }
   })
@@ -74,7 +79,7 @@ test('basic - session handler callbacks', async (t) => {
 
   s1.active()
 
-  s1.destroy()
+  w1.destroy()
 })
 
 function create() {
