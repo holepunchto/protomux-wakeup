@@ -1,5 +1,6 @@
 const test = require('brittle')
 const SecretStream = require('@hyperswarm/secret-stream')
+const Protomux = require('protomux')
 const crypto = require('hypercore-crypto')
 const promClient = require('prom-client')
 
@@ -75,6 +76,28 @@ test('basic - session handler callbacks', async (t) => {
   s1.active()
 
   s1.destroy()
+})
+
+test('channel id is validated', (t) => {
+  t.plan(1)
+
+  const w = new Wakeup()
+
+  const s1 = new SecretStream(true)
+  const s2 = new SecretStream(false)
+
+  replicate(s1, s2)
+
+  w.addStream(s2)
+
+  const channel = Protomux.from(s1).createChannel({
+    protocol: 'wakeup',
+    onclose() {
+      t.pass('rejected')
+    }
+  })
+
+  channel.open()
 })
 
 test('passive session does not open channels on existing muxers', async (t) => {

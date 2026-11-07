@@ -136,6 +136,7 @@ module.exports = class WakeupSwarm {
   }
 
   async _onpair(id, stream) {
+    if (!id) return
     const hex = b4a.toString(id, 'hex')
     const w = this.topics.get(hex)
     if (!w || !w.sessions.length) return this.onwakeup(id, stream)
