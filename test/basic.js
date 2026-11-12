@@ -77,9 +77,70 @@ test('basic - session handler callbacks', async (t) => {
   s1.destroy()
 })
 
-function create() {
+test('passive session does not open channels on existing muxers', async (t) => {
+  t.plan(4)
+
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const [w1, , s1] = await createConnected(() => t.fail('onwakeup should not be called'))
+
+  t.is(w1.muxers.size, 1, 'muxer added before the session')
+
+  const s = w1.session(cap, { active: false })
+
+  t.absent(s.topic.isActive, 'topic is passive')
+  t.absent(w1.hasStream(s1, cap), 'no channel opened for the stream')
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  t.is(w1.stats.peersAdded, 0, 'no peer added')
+})
+
+test('active session opens channels on existing muxers', async (t) => {
+  t.plan(4)
+
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const [w1, , s1] = await createConnected((id) => {
+    t.alike(id, crypto.discoveryKey(cap), 'onwakeup called on the remote')
+  })
+
+  t.is(w1.muxers.size, 1, 'muxer added before the session')
+
+  const s = w1.session(cap)
+
+  t.ok(s.topic.isActive, 'topic is active')
+  t.ok(w1.hasStream(s1, cap), 'channel opened for the stream')
+})
+
+test('passive session opens channels on existing muxers once it becomes active', async (t) => {
+  t.plan(4)
+
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const [w1, , s1] = await createConnected((id) => {
+    t.alike(id, crypto.discoveryKey(cap), 'onwakeup called on the remote')
+  })
+
+  const s = w1.session(cap, { active: false })
+
+  t.absent(w1.hasStream(s1, cap), 'no channel opened while passive')
+
+  s.active()
+
+  t.ok(s.topic.isActive, 'topic is active')
+  t.ok(w1.hasStream(s1, cap), 'channel opened for the stream when activated')
+})
+
+test('passive session does not open a channel for a muxer added later', async (t) => {
+  t.plan(2)
+
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
   const w1 = new Wakeup()
-  const w2 = new Wakeup()
+  const w2 = new Wakeup(() => t.fail('onwakeup should not be called'))
+
+  const s = w1.session(cap, { active: false })
 
   const s1 = new SecretStream(true)
   const s2 = new SecretStream(false)
@@ -89,8 +150,34 @@ function create() {
   w1.addStream(s1)
   w2.addStream(s2)
 
-  return [w1, w2]
-}
+  await s1.opened
+  await new Promise((resolve) => setImmediate(resolve))
+
+  t.is(w1.stats.peersAdded, 0, 'no peer added')
+  t.absent(w1.hasStream(s1, cap), 'no channel opened for the stream')
+})
+
+test('passive session still answers a channel opened by the remote', async (t) => {
+  t.plan(4)
+
+  const cap = Buffer.alloc(32).fill('stuffimcapableof')
+
+  const [w1, w2, s1] = await createConnected()
+
+  w1.session(cap, {
+    active: false,
+    onpeeradd: () => t.pass('onpeeradd called on the passive side'),
+    onpeeractive: () => t.pass('onpeeractive called on the passive side')
+  })
+
+  t.absent(w1.hasStream(s1, cap), 'no channel opened by the passive side')
+
+  w2.session(cap)
+
+  await new Promise((resolve) => setImmediate(resolve))
+
+  t.ok(w1.hasStream(s1, cap), 'passive side has a peer for the stream')
+})
 
 test('stats', (t) => {
   t.plan(6)
@@ -191,4 +278,32 @@ test('Prometheus metrics', async (t) => {
 
 function replicate(a, b) {
   a.rawStream.pipe(b.rawStream).pipe(a.rawStream)
+}
+
+function create() {
+  const w1 = new Wakeup()
+  const w2 = new Wakeup()
+
+  const s1 = new SecretStream(true)
+  const s2 = new SecretStream(false)
+
+  replicate(s1, s2)
+
+  w1.addStream(s1)
+  w2.addStream(s2)
+
+  return [w1, w2, s1, s2]
+}
+
+// the streams are connected before any session is made
+async function createConnected(onwakeup) {
+  const [w1, w2, s1, s2] = create()
+
+  w2.onwakeup = onwakeup
+
+  await s1.opened
+  await s2.opened
+  await new Promise((resolve) => setImmediate(resolve))
+
+  return [w1, w2, s1, s2]
 }

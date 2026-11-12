@@ -48,8 +48,10 @@ module.exports = class WakeupSwarm {
 
     this.topics.set(hex, w)
 
-    for (const muxer of this.muxers) {
-      w._onopen(muxer, true)
+    if (active) {
+      for (const muxer of this.muxers) {
+        w._onopen(muxer, true)
+      }
     }
 
     return w.addSession(handlers)
