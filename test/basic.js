@@ -77,34 +77,6 @@ test('basic - session handler callbacks', async (t) => {
   s1.destroy()
 })
 
-function create() {
-  const w1 = new Wakeup()
-  const w2 = new Wakeup()
-
-  const s1 = new SecretStream(true)
-  const s2 = new SecretStream(false)
-
-  replicate(s1, s2)
-
-  w1.addStream(s1)
-  w2.addStream(s2)
-
-  return [w1, w2, s1, s2]
-}
-
-// the streams are connected before any session is made
-async function createConnected(onwakeup) {
-  const [w1, w2, s1, s2] = create()
-
-  w2.onwakeup = onwakeup
-
-  await s1.opened
-  await s2.opened
-  await new Promise((resolve) => setImmediate(resolve))
-
-  return [w1, w2, s1, s2]
-}
-
 test('passive session does not open channels on existing muxers', async (t) => {
   t.plan(4)
 
@@ -308,4 +280,32 @@ test('Prometheus metrics', async (t) => {
 
 function replicate(a, b) {
   a.rawStream.pipe(b.rawStream).pipe(a.rawStream)
+}
+
+function create() {
+  const w1 = new Wakeup()
+  const w2 = new Wakeup()
+
+  const s1 = new SecretStream(true)
+  const s2 = new SecretStream(false)
+
+  replicate(s1, s2)
+
+  w1.addStream(s1)
+  w2.addStream(s2)
+
+  return [w1, w2, s1, s2]
+}
+
+// the streams are connected before any session is made
+async function createConnected(onwakeup) {
+  const [w1, w2, s1, s2] = create()
+
+  w2.onwakeup = onwakeup
+
+  await s1.opened
+  await s2.opened
+  await new Promise((resolve) => setImmediate(resolve))
+
+  return [w1, w2, s1, s2]
 }
