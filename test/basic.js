@@ -155,8 +155,6 @@ test('passive session does not open a channel for a muxer added later', async (t
 
   t.is(w1.stats.peersAdded, 0, 'no peer added')
   t.absent(w1.hasStream(s1, cap), 'no channel opened for the stream')
-
-  s.destroy()
 })
 
 test('passive session still answers a channel opened by the remote', async (t) => {
