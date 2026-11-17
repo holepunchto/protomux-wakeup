@@ -145,7 +145,6 @@ module.exports = class WakeupSwarm {
   registerMetrics(promClient) {
     const self = this
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_sessions_opened',
       help: 'The amount of sessions opened by protomux wakeup',
       collect() {
@@ -154,7 +153,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_sessions_closed',
       help: 'The amount of sessions closed by protomux wakeup',
       collect() {
@@ -163,7 +161,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_topics_added',
       help: 'The amount of topics added to protomux wakeup',
       collect() {
@@ -172,7 +169,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_topics_gcd',
       help: 'The amount of topics that got garbage collected by protomux wakeup',
       collect() {
@@ -181,7 +177,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_peers_added',
       help: 'The amount of peers added by protomux wakeup, across all topics',
       collect() {
@@ -190,7 +185,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_peers_removed',
       help: 'The amount of peers removed by protomux wakeup, across all topics',
       collect() {
@@ -199,7 +193,6 @@ module.exports = class WakeupSwarm {
     })
 
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_announce_rx',
       help: 'The amount of wire announce messages received by protomux wakeup',
       collect() {
@@ -207,7 +200,6 @@ module.exports = class WakeupSwarm {
       }
     })
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_announce_tx',
       help: 'The amount of wire announce messages transmitted by protomux wakeup',
       collect() {
@@ -215,7 +207,6 @@ module.exports = class WakeupSwarm {
       }
     })
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_lookup_rx',
       help: 'The amount of wire lookup messages received by protomux wakeup',
       collect() {
@@ -223,7 +214,6 @@ module.exports = class WakeupSwarm {
       }
     })
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_lookup_tx',
       help: 'The amount of wire lookup messages transmitted by protomux wakeup',
       collect() {
@@ -231,7 +221,6 @@ module.exports = class WakeupSwarm {
       }
     })
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_info_rx',
       help: 'The amount of wire info messages received by protomux wakeup',
       collect() {
@@ -239,11 +228,10 @@ module.exports = class WakeupSwarm {
       }
     })
     new promClient.Gauge({
-      // eslint-disable-line no-new
       name: 'protomux_wakeup_wire_info_tx',
       help: 'The amount of wire info messages transmitted by protomux wakeup',
       collect() {
-        this.set(self.stats.wireInfo.rx)
+        this.set(self.stats.wireInfo.tx)
       }
     })
   }
